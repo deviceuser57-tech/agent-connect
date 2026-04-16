@@ -35,6 +35,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { AgentNodeConfig } from '@/components/canvas/AgentNodeConfig';
 import { AgentChatPanel } from '@/components/canvas/AgentChatPanel';
 import { PublishToMarketplaceDialog } from '@/components/dialogs/PublishToMarketplaceDialog';
+import { WorkflowExecutionPanel } from '@/components/canvas/WorkflowExecutionPanel';
 import { WorkflowScheduleDialog } from '@/components/scheduling/WorkflowScheduleDialog';
 import { WorkflowSelector } from '@/components/canvas/WorkflowSelector';
 import { WorkflowImportExport } from '@/components/canvas/WorkflowImportExport';
@@ -223,6 +224,7 @@ const MultiAgentCanvas: React.FC = () => {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [showEditor, setShowEditor] = useState(!!configId);
+  const [executionPanelOpen, setExecutionPanelOpen] = useState(false);
   const initialLoadDone = useRef(false);
 
   const { printCanvas } = usePrintCanvas();
@@ -592,6 +594,15 @@ const MultiAgentCanvas: React.FC = () => {
       toast({ title: 'No Agents', description: 'Add at least one agent to the workflow', variant: 'destructive' });
       return;
     }
+    setExecutionPanelOpen(true);
+  };
+
+  const openChat = () => {
+    const agentNodes = nodes.filter((n) => n.type === 'agent');
+    if (agentNodes.length === 0) {
+      toast({ title: 'No Agents', description: 'Add at least one agent to the workflow', variant: 'destructive' });
+      return;
+    }
     setChatOpen(true);
   };
 
@@ -686,7 +697,10 @@ const MultiAgentCanvas: React.FC = () => {
           <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving...' : 'Save'}
         </Button>
         <Button size="sm" variant="outline" onClick={runWorkflow}>
-          <Play className="h-4 w-4 mr-1" /> Run
+          <Play className="h-4 w-4 mr-1" /> Execute
+        </Button>
+        <Button size="sm" variant="ghost" onClick={openChat} title="Chat with agents">
+          <MessageCircle className="h-4 w-4 mr-1" /> Chat
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setScheduleDialogOpen(true)} title="Schedule">
           <Clock className="h-4 w-4" />
@@ -732,6 +746,14 @@ const MultiAgentCanvas: React.FC = () => {
             />
           </div>
         )}
+
+        {/* Execution panel */}
+        <WorkflowExecutionPanel
+          isOpen={executionPanelOpen}
+          onClose={() => setExecutionPanelOpen(false)}
+          workflowId={configId}
+          workspaceId={currentWorkspace?.id}
+        />
 
         {/* Chat panel */}
         {chatOpen && (
