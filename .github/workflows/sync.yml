@@ -1,0 +1,32 @@
+name: Sync from Multi-Agent-workflow
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # كل 10 دقايق
+  workflow_dispatch:        # manual run
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+
+      - name: Clone source repo
+        run: |
+          git clone https://github.com/deviceuser57-tech/Multi-Agent-workflow.git source
+
+      - name: Copy files
+        run: |
+          rsync -av --delete source/ . --exclude .git
+
+      - name: Commit & Push if changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto sync from source repo"
+          
+          git push
