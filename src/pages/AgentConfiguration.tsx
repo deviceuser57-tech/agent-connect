@@ -355,7 +355,7 @@ export const AgentConfiguration: React.FC = () => {
         }
         toast({ title: 'Success', description: 'Agent created successfully' });
       } else {
-        const { error } = await supabase.from('ai_profiles').update(payload).eq('id', id);
+        const { error } = await supabase.from('ai_profiles').update(payload as never).eq('id', id);
         if (error) {
           console.error('Supabase update error:', error);
           throw error;

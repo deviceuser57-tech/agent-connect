@@ -207,7 +207,6 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
           entity_name: selectedFile.name,
           description: `Uploaded ${category} file, processed into ${data?.chunksCreated || 0} chunks (${data?.contentLength || 0} chars)`,
           user_id: user.id,
-          user_email: user.email,
         });
       }
 
