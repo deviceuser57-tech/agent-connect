@@ -16,10 +16,8 @@ jobs:
       # 🧨 يمسح كل حاجة ماعدا .git و .github
       - name: Clean repository
         run: |
-          find . -mindepth 1 \
-          ! -regex '^./\.git\(/.*\)?' \
-          ! -regex '^./\.github\(/.*\)?' \
-          -delete
+          shopt -s extglob dotglob
+          rm -rf !(.git|.github)
 
       # 📥 يسحب الريبو الأساسي
       - name: Clone source repo
