@@ -1,0 +1,474 @@
+import React, { useState, useMemo } from 'react';
+import { useApp } from '@/contexts/AppContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Plus, 
+  Database, 
+  FolderTree, 
+  Folder, 
+  ChevronRight, 
+  ChevronDown, 
+  Trash2, 
+  Upload, 
+  RefreshCw,
+  FileText,
+  File,
+  Clock,
+  Info,
+  Search,
+  Filter,
+  Eye,
+  X
+} from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { CreateFolderDialog } from '@/components/dialogs/CreateFolderDialog';
+import { UploadDocumentDialog } from '@/components/dialogs/UploadDocumentDialog';
+import { DocumentPreviewDialog } from '@/components/knowledge/DocumentPreviewDialog';
+import { useAuth } from '@/hooks/useAuth';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { format } from 'date-fns';
+
+interface FolderNode {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  folder_type: string | null;
+  children: FolderNode[];
+  documents: DocumentInfo[];
+}
+
+interface DocumentInfo {
+  id: string;
+  source_file: string;
+  created_at: string | null;
+  chunk_count: number;
+  folder_id: string;
+}
+
+interface FolderRecord {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  folder_type: string | null;
+}
+
+interface DocumentRecord {
+  id: string;
+  source_file: string;
+  created_at: string | null;
+  folder_id: string;
+}
+
+const buildFolderTree = (folders: FolderRecord[], documents: DocumentRecord[]): FolderNode[] => {
+  const map = new Map<string, FolderNode>();
+  const roots: FolderNode[] = [];
+
+  // Build folder map with empty documents array
+  folders.forEach((f) => {
+    map.set(f.id, { ...f, children: [], documents: [] });
+  });
+
+  // Group documents by folder
+  documents.forEach((doc) => {
+    if (doc.folder_id && map.has(doc.folder_id)) {
+      const folder = map.get(doc.folder_id)!;
+      // Check if document already exists
+      const existingDoc = folder.documents.find(d => d.source_file === doc.source_file);
+      if (existingDoc) {
+        existingDoc.chunk_count++;
+      } else {
+        folder.documents.push({
+          id: doc.id,
+          source_file: doc.source_file,
+          created_at: doc.created_at,
+          chunk_count: 1,
+          folder_id: doc.folder_id
+        });
+      }
+    }
+  });
+
+  // Build tree structure
+  folders.forEach((f) => {
+    const node = map.get(f.id)!;
+    if (f.parent_id && map.has(f.parent_id)) {
+      map.get(f.parent_id)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  return roots;
+};
+
+interface FolderItemProps {
+  folder: FolderNode;
+  level: number;
+  onDelete: (id: string) => void;
+  currentUserId: string | undefined;
+  searchQuery: string;
+  onPreviewDocument: (doc: DocumentInfo) => void;
+}
+
+const FolderItem = React.forwardRef<HTMLDivElement, FolderItemProps>(
+  ({ folder, level, onDelete, currentUserId, searchQuery, onPreviewDocument }, ref) => {
+    const [expanded, setExpanded] = useState(true);
+    
+    // Filter documents by search query
+    const filteredDocuments = folder.documents.filter(doc =>
+      doc.source_file.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    const hasChildren = folder.children.length > 0;
+    const hasDocuments = filteredDocuments.length > 0;
+    const isOwner = currentUserId && folder.created_by === currentUserId;
+
+    // If searching and no matches in this branch, hide the folder
+    if (searchQuery && !hasDocuments && !folder.children.some(child => 
+      child.documents.some(doc => doc.source_file.toLowerCase().includes(searchQuery.toLowerCase()))
+    )) {
+      return null;
+    }
+
+    return (
+      <div ref={ref}>
+        <div
+          className="flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-accent cursor-pointer group"
+          style={{ paddingInlineStart: `${level * 20 + 8}px` }}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <button
+            className="p-0.5 hover:bg-muted rounded"
+            disabled={!hasChildren && !hasDocuments}
+          >
+            {(hasChildren || folder.documents.length > 0) ? (
+              expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+            ) : (
+              <span className="w-4" />
+            )}
+          </button>
+          <Folder className="h-4 w-4 text-primary" />
+          <span className="flex-1 text-sm font-medium">{folder.name}</span>
+          
+          {folder.folder_type && (
+            <Badge variant="outline" className="text-xs">
+              {folder.folder_type}
+            </Badge>
+          )}
+          
+          {folder.documents.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {folder.documents.length} file{folder.documents.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(folder.id);
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+        
+        {/* Show documents when expanded */}
+        {expanded && hasDocuments && (
+          <div className="ml-4" style={{ paddingInlineStart: `${level * 20 + 24}px` }}>
+            {filteredDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-accent/50 text-sm group/doc"
+              >
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="flex-1 text-muted-foreground truncate">{doc.source_file}</span>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover/doc:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPreviewDocument(doc);
+                  }}
+                >
+                  <Eye className="h-3 w-3" />
+                </Button>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Info className="h-3 w-3" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-xs">
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center gap-1">
+                        <File className="h-3 w-3" />
+                        <span className="font-medium">{doc.source_file}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          {doc.created_at 
+                            ? format(new Date(doc.created_at), 'MMM d, yyyy HH:mm')
+                            : 'Unknown date'}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {doc.chunk_count} chunk{doc.chunk_count !== 1 ? 's' : ''} processed
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* Show child folders */}
+        {expanded && hasChildren && (
+          <div>
+            {folder.children.map((child) => (
+              <FolderItem 
+                key={child.id} 
+                folder={child} 
+                level={level + 1} 
+                onDelete={onDelete}
+                currentUserId={currentUserId}
+                searchQuery={searchQuery}
+                onPreviewDocument={onPreviewDocument}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+FolderItem.displayName = 'FolderItem';
+
+export const KnowledgeBase: React.FC = () => {
+  const { t } = useApp();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [folderTypeFilter, setFolderTypeFilter] = useState<string>('all');
+  const [previewDoc, setPreviewDoc] = useState<DocumentInfo | null>(null);
+
+  const { data: folders, isLoading: foldersLoading } = useQuery({
+    queryKey: ['folders'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('knowledge_folders')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: documents, isLoading: documentsLoading } = useQuery({
+    queryKey: ['knowledge_chunks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('knowledge_chunks')
+        .select('id, source_file, folder_id, created_at')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('knowledge_folders').delete().eq('id', id);
+    if (!error) {
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge_chunks'] });
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['folders'] }),
+      queryClient.invalidateQueries({ queryKey: ['knowledge_chunks'] })
+    ]);
+    setIsRefreshing(false);
+  };
+
+  const isLoading = foldersLoading || documentsLoading;
+  
+  // Apply folder type filter
+  const filteredFolders = useMemo(() => {
+    if (!folders) return [];
+    if (folderTypeFilter === 'all') return folders;
+    return folders.filter(f => f.folder_type === folderTypeFilter);
+  }, [folders, folderTypeFilter]);
+  
+  const folderTree = filteredFolders && documents ? buildFolderTree(filteredFolders, documents) : [];
+  
+  // Get unique folder types for filter
+  const folderTypes = useMemo(() => {
+    if (!folders) return [];
+    const types = new Set(folders.map(f => f.folder_type).filter(Boolean));
+    return Array.from(types) as string[];
+  }, [folders]);
+
+  // Count total documents matching search
+  const totalMatchingDocs = useMemo(() => {
+    if (!documents) return 0;
+    if (!searchQuery) return documents.length;
+    return documents.filter(d => 
+      d.source_file.toLowerCase().includes(searchQuery.toLowerCase())
+    ).length;
+  }, [documents, searchQuery]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">{t.knowledgeBase.title}</h1>
+          <p className="text-muted-foreground mt-1">Manage folders and documents</p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Refresh folders"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => setFolderDialogOpen(true)}>
+            <FolderTree className="h-4 w-4" />
+            {t.knowledgeBase.newFolder}
+          </Button>
+          <Button className="gap-2" onClick={() => setUploadDialogOpen(true)}>
+            <Upload className="h-4 w-4" />
+            {t.knowledgeBase.uploadFiles}
+          </Button>
+        </div>
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="flex gap-3 items-center">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search documents..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+              onClick={() => setSearchQuery('')}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        
+        <Select value={folderTypeFilter} onValueChange={setFolderTypeFilter}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {folderTypes.map(type => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        {(searchQuery || folderTypeFilter !== 'all') && (
+          <Badge variant="secondary" className="text-xs">
+            {totalMatchingDocs} result{totalMatchingDocs !== 1 ? 's' : ''}
+          </Badge>
+        )}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Folder Explorer
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : folderTree.length > 0 ? (
+            <div className="space-y-1">
+              {folderTree.map((folder) => (
+                <FolderItem 
+                  key={folder.id} 
+                  folder={folder} 
+                  level={0} 
+                  onDelete={handleDelete}
+                  currentUserId={user?.id}
+                  searchQuery={searchQuery}
+                  onPreviewDocument={(doc) => setPreviewDoc(doc)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">
+              {searchQuery ? 'No documents match your search' : t.knowledgeBase.noFolders}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <CreateFolderDialog
+        open={folderDialogOpen}
+        onOpenChange={setFolderDialogOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['folders'] });
+        }}
+      />
+
+      <UploadDocumentDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['folders'] });
+          queryClient.invalidateQueries({ queryKey: ['knowledge_chunks'] });
+        }}
+      />
+
+      <DocumentPreviewDialog
+        open={!!previewDoc}
+        onOpenChange={(open) => !open && setPreviewDoc(null)}
+        sourceFile={previewDoc?.source_file || ''}
+        folderId={previewDoc?.folder_id}
+      />
+    </div>
+  );
+};
