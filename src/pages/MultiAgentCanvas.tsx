@@ -747,6 +747,14 @@ const MultiAgentCanvas: React.FC = () => {
           </div>
         )}
 
+        {/* Execution panel */}
+        <WorkflowExecutionPanel
+          isOpen={executionPanelOpen}
+          onClose={() => setExecutionPanelOpen(false)}
+          workflowId={configId}
+          workspaceId={currentWorkspace?.id}
+        />
+
         {/* Chat panel */}
         {chatOpen && (
           <AgentChatPanel
