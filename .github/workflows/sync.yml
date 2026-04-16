@@ -1,32 +1,42 @@
-name: Sync from Multi-Agent-workflow
+name: Clean & Sync Repo
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"   # كل 10 دقايق
-  workflow_dispatch:        # manual run
+  workflow_dispatch:
 
 jobs:
-  sync:
+  reset-and-sync:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout target repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
+      # 🧨 يمسح كل حاجة ماعدا .git و .github
+      - name: Clean repository
+        run: |
+          find . -mindepth 1 \
+          ! -regex '^./\.git\(/.*\)?' \
+          ! -regex '^./\.github\(/.*\)?' \
+          -delete
+
+      # 📥 يسحب الريبو الأساسي
       - name: Clone source repo
         run: |
-          git clone https://github.com/deviceuser57-tech/Multi-Agent-workflow.git source
+          git clone --depth=1 https://github.com/deviceuser57-tech/Multi-Agent-workflow.git source
 
+      # 📂 ينقل الملفات
       - name: Copy files
         run: |
-          rsync -av --delete source/ . --exclude .git
+          rsync -av source/ ./ --exclude .git --exclude .github
 
-      - name: Commit & Push if changes
+      # 🚀 commit + push
+      - name: Commit & Push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          
+
           git add .
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto sync from source repo"
-          
+          git commit -m "Full reset & sync" || echo "No changes"
           git push
