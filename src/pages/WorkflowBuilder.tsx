@@ -392,7 +392,19 @@ export const WorkflowBuilder: React.FC = () => {
 
       const workflow = parseWorkflowFromResponse(assistantContent);
       if (workflow) {
-        setGeneratedWorkflow(workflow);
+        // Defensive normalization: ensure required arrays exist so render code doesn't crash
+        const wf = workflow.workflow ?? ({} as GeneratedWorkflow);
+        const safeWorkflow: WorkflowResult = {
+          ...workflow,
+          workflow: {
+            ...wf,
+            name: wf.name ?? 'Untitled Workflow',
+            description: wf.description ?? '',
+            agents: Array.isArray(wf.agents) ? wf.agents : [],
+            edges: Array.isArray(wf.edges) ? wf.edges : [],
+          },
+        };
+        setGeneratedWorkflow(safeWorkflow);
       }
     } catch (error) {
       console.error('Stream error:', error);
