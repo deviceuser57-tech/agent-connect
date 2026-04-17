@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
+import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
 import {
   Send,
   Bot,
@@ -392,17 +393,12 @@ export const WorkflowBuilder: React.FC = () => {
 
       const workflow = parseWorkflowFromResponse(assistantContent);
       if (workflow) {
-        // Defensive normalization: ensure required arrays exist so render code doesn't crash
+        // Defensive normalization + auto-completion to guarantee execution-ready spec
         const wf = workflow.workflow ?? ({} as GeneratedWorkflow);
+        const completed = autoCompleteWorkflow(wf as unknown as Record<string, unknown>);
         const safeWorkflow: WorkflowResult = {
           ...workflow,
-          workflow: {
-            ...wf,
-            name: wf.name ?? 'Untitled Workflow',
-            description: wf.description ?? '',
-            agents: Array.isArray(wf.agents) ? wf.agents : [],
-            edges: Array.isArray(wf.edges) ? wf.edges : [],
-          },
+          workflow: completed as unknown as GeneratedWorkflow,
         };
         setGeneratedWorkflow(safeWorkflow);
       }
