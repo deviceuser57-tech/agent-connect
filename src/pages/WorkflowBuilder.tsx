@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
+import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
 import {
   Send,
   Bot,
