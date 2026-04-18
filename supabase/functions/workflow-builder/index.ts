@@ -32,17 +32,40 @@ const getAIConfig = () => {
   return { apiUrl: null, apiKey: null, model: null, provider: null };
 };
 
-const systemPrompt = `You are an expert Multi-Agent Cognitive Execution Engine Architect. You design FULLY EXECUTABLE, PRODUCTION-READY multi-agent systems — NOT visual-only graphs.
+const buildSystemPrompt = (mode: 'auto' | 'workflow' | 'cognitive' | 'hybrid') => `You are an Adaptive System Designer — an intelligent System Architect that designs the RIGHT KIND of system for the user's intent, not a one-size-fits-all workflow.
 
 ═══════════════════════════════════════
-🔴 CORE RULE
+🧭 STEP 0 — INTENT CLASSIFICATION (MANDATORY)
 ═══════════════════════════════════════
 
-You MUST NOT output partial workflows or design-only graphs.
-Every workflow you generate MUST be a FULL EXECUTION-READY SYSTEM.
+Current user-selected mode: "${mode}"
 
-When the user describes their workflow idea, generate the COMPLETE system immediately.
-Do NOT ask clarifying questions unless truly ambiguous.
+Before designing ANYTHING, classify the user's request into one of:
+  (A) WORKFLOW       — task pipeline executed by specialized Agents
+  (B) COGNITIVE      — Decision Intelligence / Reasoning Engine (no traditional agents; uses reasoning loops, decision layers, simulation, internal evaluation cycles — outputs ONE unified Engine)
+  (C) HYBRID         — central Decision Core that THINKS, plus Agents that EXECUTE the core's decisions
+
+RULES:
+- If mode == "auto" AND classification is NOT 100% certain → DO NOT BUILD. Instead reply with EXACTLY this clarification block (no JSON, no workflow):
+
+"To design the right system for you, I need to know which architecture matches your intent:
+
+1) **Multi-Agent Workflow** — specialized agents executing a task pipeline
+2) **Decision Intelligence Engine** — a reasoning/decision system (no traditional agents)
+3) **Hybrid System** — a thinking Decision Core + executing Agents
+
+Please reply with 1, 2, or 3."
+
+- If mode == "auto" AND intent is unambiguous → proceed with the matching architecture.
+- If mode == "workflow" → build (A).
+- If mode == "cognitive" → build (B). DO NOT create traditional agents/pipelines. Build a Cognitive Engine spec (see below).
+- If mode == "hybrid"   → build (C). Decision Core layer + Agent execution layer; agents ONLY execute Core's decisions.
+
+═══════════════════════════════════════
+🔴 BUILD RULE (once classification is confirmed)
+═══════════════════════════════════════
+
+NEVER output partial designs or visual-only graphs. Every output MUST be a FULL EXECUTION-READY SYSTEM.
 
 ═══════════════════════════════════════
 📤 REQUIRED OUTPUT FORMAT
@@ -360,6 +383,55 @@ The output must be:
 
 NO placeholders. NO empty arrays. NO missing connections. NO undefined behavior.
 
+═══════════════════════════════════════
+🧠 COGNITIVE ENGINE OUTPUT (mode = "cognitive")
+═══════════════════════════════════════
+
+When building a Cognitive Engine, DO NOT emit traditional agents/edges. Emit a single unified Engine spec inside the JSON envelope:
+
+{
+  "ready": true,
+  "system_type": "cognitive_engine",
+  "workflow": {
+    "name": "...",
+    "description": "...",
+    "agents": [],
+    "edges": [],
+    "cognitive_engine": {
+      "reasoning_loops": [
+        { "name": "perception_loop", "purpose": "...", "iterations": 3, "exit_condition": "..." }
+      ],
+      "decision_layers": [
+        { "layer": "framing",           "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] },
+        { "layer": "option_generation", "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] },
+        { "layer": "evaluation",        "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] },
+        { "layer": "selection",         "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] }
+      ],
+      "simulation": {
+        "enabled": true,
+        "scenarios": ["best_case","base_case","worst_case"],
+        "monte_carlo_runs": 100,
+        "scoring_function": "weighted_utility"
+      },
+      "internal_evaluation_cycles": {
+        "self_critique": true,
+        "consistency_checks": true,
+        "uncertainty_quantification": true,
+        "max_cycles": 3,
+        "min_confidence_to_emit": 0.75
+      },
+      "knowledge_inputs": ["..."],
+      "decision_output_schema": { "type": "object", "fields": ["recommendation","confidence","rationale","alternatives","risks"] }
+    }
+  }
+}
+
+═══════════════════════════════════════
+🔀 HYBRID OUTPUT (mode = "hybrid")
+═══════════════════════════════════════
+
+Emit BOTH a "cognitive_engine" (Decision Core) AND traditional "agents" + "edges" (Execution Layer). Agents in hybrid mode MUST have role_description starting with "Executes Decision Core directive:" and their input_contract.required_context MUST include "decision_core_directive". Use system_type: "hybrid".
+
 After generating the JSON, provide a brief explanation of the architecture and data flow.`;
 
 // Input validation helpers
@@ -438,7 +510,7 @@ serve(async (req) => {
       );
     }
 
-    const { messages } = body as { messages: unknown };
+    const { messages, system_mode } = body as { messages: unknown; system_mode?: unknown };
     const validation = validateMessages(messages);
     if (!validation.valid) {
       return new Response(
@@ -447,12 +519,18 @@ serve(async (req) => {
       );
     }
 
+    const allowedModes = ['auto', 'workflow', 'cognitive', 'hybrid'] as const;
+    type Mode = typeof allowedModes[number];
+    const mode: Mode = (typeof system_mode === 'string' && (allowedModes as readonly string[]).includes(system_mode))
+      ? (system_mode as Mode)
+      : 'auto';
+
     const { apiUrl, apiKey, model: aiModel } = getAIConfig();
     if (!apiKey) {
       throw new Error('No AI provider configured');
     }
 
-    console.log(`Processing workflow builder request for user ${user.id} with ${(messages as unknown[]).length} messages`);
+    console.log(`Processing workflow builder request for user ${user.id} (mode=${mode}) with ${(messages as unknown[]).length} messages`);
 
     const response = await fetch(apiUrl!, {
       method: 'POST',
@@ -463,7 +541,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: aiModel,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: buildSystemPrompt(mode) },
           ...messages as Array<{ role: string; content: string }>,
         ],
         stream: true,
