@@ -396,12 +396,16 @@ export const WorkflowBuilder: React.FC = () => {
 
       const workflow = parseWorkflowFromResponse(assistantContent);
       if (workflow) {
-        // Defensive normalization + auto-completion to guarantee execution-ready spec
         const wf = workflow.workflow ?? ({} as GeneratedWorkflow);
-        const completed = autoCompleteWorkflow(wf as unknown as Record<string, unknown>);
+        const isCognitive = systemMode === 'cognitive'
+          || (wf as unknown as { cognitive_engine?: unknown }).cognitive_engine !== undefined
+            && (!Array.isArray((wf as unknown as { agents?: unknown[] }).agents) || ((wf as unknown as { agents?: unknown[] }).agents?.length ?? 0) === 0);
+        const finalWf = isCognitive
+          ? wf
+          : (autoCompleteWorkflow(wf as unknown as Record<string, unknown>) as unknown as GeneratedWorkflow);
         const safeWorkflow: WorkflowResult = {
           ...workflow,
-          workflow: completed as unknown as GeneratedWorkflow,
+          workflow: finalWf,
         };
         setGeneratedWorkflow(safeWorkflow);
       }
