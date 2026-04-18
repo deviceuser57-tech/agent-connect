@@ -626,15 +626,36 @@ export const WorkflowBuilder: React.FC = () => {
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <div className="border-b p-4 bg-card">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Sparkles className="h-6 w-6 text-primary" />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold">Adaptive System Designer</h1>
+              <p className="text-sm text-muted-foreground">
+                Choose the architecture that matches your intent — Workflow, Cognitive Engine, or Hybrid
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold">AI Workflow Builder</h1>
-            <p className="text-sm text-muted-foreground">
-              Describe your idea → Get a fully executable multi-agent system
-            </p>
+          <div className="flex items-center gap-1 p-1 rounded-lg border bg-muted/30">
+            {([
+              { key: 'auto', label: 'Auto-detect' },
+              { key: 'workflow', label: 'Workflow' },
+              { key: 'cognitive', label: 'Cognitive Engine' },
+              { key: 'hybrid', label: 'Hybrid' },
+            ] as { key: SystemMode; label: string }[]).map(opt => (
+              <Button
+                key={opt.key}
+                size="sm"
+                variant={systemMode === opt.key ? 'default' : 'ghost'}
+                className="h-7 text-xs"
+                onClick={() => setSystemMode(opt.key)}
+                disabled={isLoading}
+              >
+                {opt.label}
+              </Button>
+            ))}
           </div>
         </div>
       </div>
