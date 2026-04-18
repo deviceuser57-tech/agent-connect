@@ -269,12 +269,15 @@ interface WorkflowResult {
 // Component
 // ═══════════════════════════════════════
 
+type SystemMode = 'auto' | 'workflow' | 'cognitive' | 'hybrid';
+
 export const WorkflowBuilder: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [generatedWorkflow, setGeneratedWorkflow] = useState<WorkflowResult | null>(null);
+  const [systemMode, setSystemMode] = useState<SystemMode>('auto');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
