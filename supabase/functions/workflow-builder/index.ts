@@ -510,7 +510,7 @@ serve(async (req) => {
       );
     }
 
-    const { messages } = body as { messages: unknown };
+    const { messages, system_mode } = body as { messages: unknown; system_mode?: unknown };
     const validation = validateMessages(messages);
     if (!validation.valid) {
       return new Response(
@@ -519,12 +519,18 @@ serve(async (req) => {
       );
     }
 
+    const allowedModes = ['auto', 'workflow', 'cognitive', 'hybrid'] as const;
+    type Mode = typeof allowedModes[number];
+    const mode: Mode = (typeof system_mode === 'string' && (allowedModes as readonly string[]).includes(system_mode))
+      ? (system_mode as Mode)
+      : 'auto';
+
     const { apiUrl, apiKey, model: aiModel } = getAIConfig();
     if (!apiKey) {
       throw new Error('No AI provider configured');
     }
 
-    console.log(`Processing workflow builder request for user ${user.id} with ${(messages as unknown[]).length} messages`);
+    console.log(`Processing workflow builder request for user ${user.id} (mode=${mode}) with ${(messages as unknown[]).length} messages`);
 
     const response = await fetch(apiUrl!, {
       method: 'POST',
@@ -535,7 +541,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: aiModel,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: buildSystemPrompt(mode) },
           ...messages as Array<{ role: string; content: string }>,
         ],
         stream: true,
