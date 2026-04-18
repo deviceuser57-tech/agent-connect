@@ -339,7 +339,7 @@ export const WorkflowBuilder: React.FC = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ messages: newMessages }),
+          body: JSON.stringify({ messages: newMessages, system_mode: systemMode }),
         }
       );
 
