@@ -383,6 +383,55 @@ The output must be:
 
 NO placeholders. NO empty arrays. NO missing connections. NO undefined behavior.
 
+═══════════════════════════════════════
+🧠 COGNITIVE ENGINE OUTPUT (mode = "cognitive")
+═══════════════════════════════════════
+
+When building a Cognitive Engine, DO NOT emit traditional agents/edges. Emit a single unified Engine spec inside the JSON envelope:
+
+{
+  "ready": true,
+  "system_type": "cognitive_engine",
+  "workflow": {
+    "name": "...",
+    "description": "...",
+    "agents": [],
+    "edges": [],
+    "cognitive_engine": {
+      "reasoning_loops": [
+        { "name": "perception_loop", "purpose": "...", "iterations": 3, "exit_condition": "..." }
+      ],
+      "decision_layers": [
+        { "layer": "framing",           "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] },
+        { "layer": "option_generation", "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] },
+        { "layer": "evaluation",        "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] },
+        { "layer": "selection",         "responsibilities": ["..."], "inputs": ["..."], "outputs": ["..."] }
+      ],
+      "simulation": {
+        "enabled": true,
+        "scenarios": ["best_case","base_case","worst_case"],
+        "monte_carlo_runs": 100,
+        "scoring_function": "weighted_utility"
+      },
+      "internal_evaluation_cycles": {
+        "self_critique": true,
+        "consistency_checks": true,
+        "uncertainty_quantification": true,
+        "max_cycles": 3,
+        "min_confidence_to_emit": 0.75
+      },
+      "knowledge_inputs": ["..."],
+      "decision_output_schema": { "type": "object", "fields": ["recommendation","confidence","rationale","alternatives","risks"] }
+    }
+  }
+}
+
+═══════════════════════════════════════
+🔀 HYBRID OUTPUT (mode = "hybrid")
+═══════════════════════════════════════
+
+Emit BOTH a "cognitive_engine" (Decision Core) AND traditional "agents" + "edges" (Execution Layer). Agents in hybrid mode MUST have role_description starting with "Executes Decision Core directive:" and their input_contract.required_context MUST include "decision_core_directive". Use system_type: "hybrid".
+
 After generating the JSON, provide a brief explanation of the architecture and data flow.`;
 
 // Input validation helpers
