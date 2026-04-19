@@ -684,7 +684,14 @@ export const WorkflowBuilder: React.FC = () => {
         contextSummary: `${decomposed.intent} | mode=${mode} | summary=${result.final.proposed_spec.summary}`,
         reasoningPath: result.cycles.map((c) => ({ think: c.think, adjust: c.adjust })),
         simulationBranches: result.final.simulate,
-        fidelityScores: result.final.fidelity ?? {},
+        fidelityScores: result.final.fidelity
+          ? {
+              confidence: result.final.fidelity.confidence,
+              divergence: result.final.fidelity.divergence,
+              stability: result.final.fidelity.stability,
+              overall: result.final.fidelity.overall,
+            }
+          : {},
       });
 
       setCognitiveStage('');
