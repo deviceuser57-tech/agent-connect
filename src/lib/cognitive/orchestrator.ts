@@ -1,29 +1,31 @@
-// Phase 1 orchestrator — runs L0 (decompose), L1 (infer), L3 (memory recall)
-// L2 (negotiation) is interactive — handled by ArchitectureNegotiation UI
-// L4–L11 will be added in Phase 2+
+// Phase 2 orchestrator — L0 (decompose), L1 (infer), L3 (vector recall),
+// L4 (cyclic orchestration via edge fn), L5 (fidelity), L6 (self-correction).
 import { supabase } from '@/integrations/supabase/client';
-import { CognitiveDNA, ModeInference, DecomposedInput, MemoryRecord } from './types';
+import {
+  CognitiveDNA,
+  ModeInference,
+  DecomposedInput,
+  MemoryRecord,
+  OrchestrationCycle,
+} from './types';
+import { scoreCycle, shouldSelfCorrect, FidelityScore } from './fidelityScoring';
 
-/** L0: lightweight client-side decomposition — no LLM call. Detects obvious ambiguity. */
+/** L0: lightweight client-side decomposition. */
 export function decompose(input: string): DecomposedInput {
   const trimmed = input.trim();
   const ambiguities: string[] = [];
   const contradictions: string[] = [];
-
   if (trimmed.length < 20) ambiguities.push('Input is very short — intent may be unclear');
   if (/\bor\b/i.test(trimmed) && /\?/.test(trimmed)) ambiguities.push('Contains alternatives — may need clarification');
   if (/\bnot\b.*\band\b/i.test(trimmed)) contradictions.push('Possible negation contradiction');
-
-  // crude entity extraction
   const entities = Array.from(new Set(
     (trimmed.match(/\b[A-Z][a-zA-Z]{2,}\b/g) ?? [])
       .filter((w) => !['The', 'And', 'For', 'This', 'That'].includes(w)),
   )).slice(0, 10);
-
   return { intent: trimmed.slice(0, 280), entities, ambiguities, contradictions };
 }
 
-/** L1: call edge function for probabilistic mode inference. */
+/** L1 */
 export async function inferMode(userInput: string, dna: CognitiveDNA): Promise<ModeInference> {
   const { data, error } = await supabase.functions.invoke('cognitive-l1-infer', {
     body: { user_input: userInput, dna: { hot_path: dna.hot_path } },
@@ -33,17 +35,47 @@ export async function inferMode(userInput: string, dna: CognitiveDNA): Promise<M
   return data.inference as ModeInference;
 }
 
-/** L3: episodic memory recall — text-similarity fallback (no pgvector required). */
-export async function recallMemory(workspaceId: string, contextSummary: string, limit = 5): Promise<MemoryRecord[]> {
+/** Generate embedding via edge function. Returns null on failure. */
+async function embedText(text: string): Promise<number[] | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('cognitive-embed', { body: { text } });
+    if (error) return null;
+    return (data?.embedding as number[] | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * L3: episodic memory recall — pgvector cosine similarity (with keyword fallback).
+ */
+export async function recallMemory(
+  workspaceId: string,
+  contextSummary: string,
+  limit = 5,
+): Promise<MemoryRecord[]> {
+  const embedding = await embedText(contextSummary);
+
+  if (embedding && embedding.length > 0) {
+    const { data, error } = await supabase.rpc('match_decision_memory' as never, {
+      query_embedding: embedding,
+      match_workspace: workspaceId,
+      match_count: limit,
+      min_similarity: 0.5,
+    } as never);
+    if (!error && Array.isArray(data) && (data as unknown[]).length > 0) {
+      return (data as unknown as MemoryRecord[]);
+    }
+  }
+
+  // Fallback: keyword overlap (Phase 1 logic)
   const { data, error } = await supabase
     .from('decision_memory_graph' as never)
     .select('id, context_summary, fidelity_scores, outcome_feedback, created_at')
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
     .limit(50);
-
   if (error || !data) return [];
-  // simple keyword overlap scoring
   const tokens = new Set(contextSummary.toLowerCase().split(/\W+/).filter((t) => t.length > 3));
   const scored = (data as unknown as MemoryRecord[]).map((rec) => {
     const recTokens = new Set((rec.context_summary ?? '').toLowerCase().split(/\W+/));
@@ -58,7 +90,68 @@ export async function recallMemory(workspaceId: string, contextSummary: string, 
     .map((s) => s.rec);
 }
 
-/** Persist a cognition trace row. */
+/** L4 — invoke one orchestration cycle on the edge */
+async function runCycle(params: {
+  user_intent: string;
+  decision_contract: unknown;
+  memory_recall: MemoryRecord[];
+  prior_cycles: OrchestrationCycle[];
+  dna: CognitiveDNA;
+}): Promise<OrchestrationCycle> {
+  const { data, error } = await supabase.functions.invoke('cognitive-l4-orchestrate', {
+    body: params,
+  });
+  if (error) throw new Error(error.message);
+  if (!data?.cycle) throw new Error('L4 returned no cycle');
+  return data.cycle as OrchestrationCycle;
+}
+
+/**
+ * L4 + L5 + L6 — runs Think→Simulate→Evaluate→Adjust loop.
+ * Bounded by maxCycles (default 3, hot-path 1). Early-exits when fidelity passes.
+ */
+export async function runOrchestration(params: {
+  userIntent: string;
+  contract: unknown;
+  memory: MemoryRecord[];
+  dna: CognitiveDNA;
+  hotPath: boolean;
+  onCycle?: (cycle: OrchestrationCycle, idx: number) => void;
+}): Promise<{ cycles: OrchestrationCycle[]; converged: boolean; final: OrchestrationCycle }> {
+  const maxCycles = params.hotPath ? 1 : 3;
+  const cycles: OrchestrationCycle[] = [];
+  let converged = false;
+
+  for (let i = 0; i < maxCycles; i++) {
+    const cycle = await runCycle({
+      user_intent: params.userIntent,
+      decision_contract: params.contract,
+      memory_recall: params.memory,
+      prior_cycles: cycles,
+      dna: params.dna,
+    });
+
+    // L5: fidelity scoring
+    const fidelity: FidelityScore = scoreCycle(cycle, cycles[cycles.length - 1] ?? null);
+    cycle.fidelity = fidelity;
+    cycles.push(cycle);
+    params.onCycle?.(cycle, i);
+
+    // L6: self-correction decision
+    if (!shouldSelfCorrect(fidelity, i, maxCycles)) {
+      converged = fidelity.passed;
+      break;
+    }
+  }
+
+  return {
+    cycles,
+    converged,
+    final: cycles[cycles.length - 1],
+  };
+}
+
+/** Trace persistence */
 export async function startTrace(params: {
   workspaceId: string;
   workflowId?: string;
@@ -101,4 +194,26 @@ export async function completeTrace(traceId: string, finalSpec: unknown, duratio
       completed_at: new Date().toISOString(),
     } as never)
     .eq('id', traceId);
+}
+
+/** Persist a finalized decision into the memory graph (with embedding). */
+export async function writeMemory(params: {
+  workspaceId: string;
+  dnaVersion: number;
+  contextSummary: string;
+  reasoningPath: unknown;
+  simulationBranches: unknown;
+  fidelityScores: Record<string, number>;
+}): Promise<void> {
+  const embedding = await embedText(params.contextSummary);
+  await supabase.from('decision_memory_graph' as never).insert({
+    workspace_id: params.workspaceId,
+    dna_version: params.dnaVersion,
+    context: { summary: params.contextSummary },
+    context_summary: params.contextSummary,
+    reasoning_path: params.reasoningPath,
+    simulation_branches: params.simulationBranches,
+    fidelity_scores: params.fidelityScores,
+    embedding: embedding ?? null,
+  } as never);
 }

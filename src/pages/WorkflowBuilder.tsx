@@ -12,10 +12,12 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
 import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
-import { decompose, inferMode, recallMemory, startTrace, updateTrace } from '@/lib/cognitive/orchestrator';
+import { decompose, inferMode, recallMemory, startTrace, updateTrace, runOrchestration, completeTrace, writeMemory } from '@/lib/cognitive/orchestrator';
 import { loadOrCreateDNA } from '@/lib/cognitive/dna';
 import { ArchitectureNegotiation } from '@/components/cognitive/ArchitectureNegotiation';
-import type { ModeInference } from '@/lib/cognitive/types';
+import { CycleVisualizer } from '@/components/cognitive/CycleVisualizer';
+import { CognitionTab } from '@/components/cognitive/CognitionTab';
+import type { ModeInference, OrchestrationCycle, CognitionTrace } from '@/lib/cognitive/types';
 import {
   Send,
   Bot,
@@ -285,6 +287,11 @@ export const WorkflowBuilder: React.FC = () => {
   const [cognitiveEnabled, setCognitiveEnabled] = useState(false);
   const [pendingInference, setPendingInference] = useState<{ inference: ModeInference; userInput: string; traceId: string | null } | null>(null);
   const [cognitiveStage, setCognitiveStage] = useState<string>('');
+  const [liveCycles, setLiveCycles] = useState<OrchestrationCycle[]>([]);
+  const [cyclesActive, setCyclesActive] = useState(false);
+  const [cyclesConverged, setCyclesConverged] = useState(false);
+  const [cognitionTrace, setCognitionTrace] = useState<CognitionTrace | null>(null);
+  const [hotPathTaken, setHotPathTaken] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
@@ -624,13 +631,84 @@ export const WorkflowBuilder: React.FC = () => {
     }
   };
 
-  const acceptCognitiveContract = (mode: 'workflow' | 'cognitive' | 'hybrid') => {
-    if (!pendingInference) return;
-    const userInput = pendingInference.userInput;
+  const acceptCognitiveContract = async (mode: 'workflow' | 'cognitive' | 'hybrid') => {
+    if (!pendingInference || !currentWorkspace) return;
+    const { userInput, inference, traceId } = pendingInference;
     setSystemMode(mode);
     setPendingInference(null);
-    // Hand off to existing streaming pipeline with the locked-in mode
-    setTimeout(() => streamChat(userInput), 50);
+
+    // Run L4 cyclic orchestration (with L5 fidelity + L6 self-correction inline)
+    setIsLoading(true);
+    setCyclesActive(true);
+    setLiveCycles([]);
+    setCyclesConverged(false);
+    const startedAt = Date.now();
+    try {
+      const dna = await loadOrCreateDNA(currentWorkspace.id);
+      const decomposed = decompose(userInput);
+      const memory = await recallMemory(currentWorkspace.id, decomposed.intent);
+      const hotPath = !!(dna.hot_path?.enabled && inference.hot_path_eligible);
+      setHotPathTaken(hotPath);
+      setCognitiveStage(`L4: orchestration cycles${hotPath ? ' (hot-path)' : ''}…`);
+
+      const contract = { mode, user_intent: userInput, refinements: [], signed_at: new Date().toISOString(), inference };
+
+      const result = await runOrchestration({
+        userIntent: userInput,
+        contract,
+        memory,
+        dna,
+        hotPath,
+        onCycle: (cycle) => setLiveCycles((prev) => [...prev, cycle]),
+      });
+      setCyclesConverged(result.converged);
+
+      const fullTrace: CognitionTrace = {
+        L0: decomposed,
+        L1: inference,
+        L2: contract,
+        L3: { recalled: memory, reason: memory.length > 0 ? 'pgvector cosine similarity' : 'no prior memories' },
+        L4: { cycles: result.cycles, final_cycle_idx: result.cycles.length - 1, converged: result.converged },
+      };
+      setCognitionTrace(fullTrace);
+
+      if (traceId) {
+        await updateTrace(traceId, fullTrace as unknown as Record<string, unknown>, hotPath);
+        await completeTrace(traceId, result.final.proposed_spec, Date.now() - startedAt);
+      }
+
+      // Persist decision into memory graph for future L3 recall
+      await writeMemory({
+        workspaceId: currentWorkspace.id,
+        dnaVersion: dna.version,
+        contextSummary: `${decomposed.intent} | mode=${mode} | summary=${result.final.proposed_spec.summary}`,
+        reasoningPath: result.cycles.map((c) => ({ think: c.think, adjust: c.adjust })),
+        simulationBranches: result.final.simulate,
+        fidelityScores: result.final.fidelity
+          ? {
+              confidence: result.final.fidelity.confidence,
+              divergence: result.final.fidelity.divergence,
+              stability: result.final.fidelity.stability,
+              overall: result.final.fidelity.overall,
+            }
+          : {},
+      });
+
+      setCognitiveStage('');
+      // Hand the converged spec to the existing streaming pipeline as context
+      const augmented = `${userInput}\n\n[Cognitive engine converged spec — use as authoritative blueprint]\n${JSON.stringify(result.final.proposed_spec, null, 2)}`;
+      setTimeout(() => streamChat(augmented), 50);
+    } catch (e) {
+      toast({
+        title: 'L4 orchestration failed',
+        description: e instanceof Error ? e.message : 'Unknown error',
+        variant: 'destructive',
+      });
+      setCognitiveStage('');
+    } finally {
+      setCyclesActive(false);
+      setIsLoading(false);
+    }
   };
 
   const refineCognitive = async (refinement: string) => {
@@ -764,6 +842,13 @@ export const WorkflowBuilder: React.FC = () => {
           <Loader2 className="h-3 w-3 animate-spin" /> {cognitiveStage}
         </div>
       )}
+      {(cyclesActive || liveCycles.length > 0) && (
+        <div className="border-b p-4 bg-muted/10">
+          <div className="max-w-4xl mx-auto">
+            <CycleVisualizer cycles={liveCycles} active={cyclesActive} converged={cyclesConverged} />
+          </div>
+        </div>
+      )}
 
       {/* Chat Area */}
       <ScrollArea className="flex-1 p-4">
@@ -834,7 +919,7 @@ export const WorkflowBuilder: React.FC = () => {
                 </div>
 
                 <Tabs defaultValue="preview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
+                  <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="preview" className="gap-1 text-xs">
                       <Eye className="h-3 w-3" />
                       Preview
@@ -855,7 +940,15 @@ export const WorkflowBuilder: React.FC = () => {
                       <Shield className="h-3 w-3" />
                       Safety
                     </TabsTrigger>
+                    <TabsTrigger value="cognition" className="gap-1 text-xs">
+                      <Brain className="h-3 w-3" />
+                      Cognition
+                    </TabsTrigger>
                   </TabsList>
+
+                  <TabsContent value="cognition" className="mt-4">
+                    <CognitionTab trace={cognitionTrace} hotPath={hotPathTaken} />
+                  </TabsContent>
 
                   {/* Visual Preview Tab */}
                   <TabsContent value="preview" className="mt-4">
