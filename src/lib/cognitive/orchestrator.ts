@@ -63,7 +63,7 @@ export async function recallMemory(
       match_count: limit,
       min_similarity: 0.5,
     } as never);
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data) && (data as unknown[]).length > 0) {
       return (data as unknown as MemoryRecord[]);
     }
   }

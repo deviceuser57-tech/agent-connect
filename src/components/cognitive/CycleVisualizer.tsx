@@ -21,7 +21,7 @@ export function CycleVisualizer({ cycles, active, converged }: Props) {
           <Activity className="h-4 w-4 text-primary" />
           L4 Cyclic Orchestration
           {active && <Badge variant="secondary" className="gap-1 ml-2"><RefreshCw className="h-3 w-3 animate-spin" />running</Badge>}
-          {!active && converged && <Badge className="gap-1 ml-2 bg-green-600"><CheckCircle2 className="h-3 w-3" />converged</Badge>}
+          {!active && converged && <Badge className="gap-1 ml-2"><CheckCircle2 className="h-3 w-3" />converged</Badge>}
           {!active && cycles.length > 0 && !converged && (
             <Badge variant="destructive" className="gap-1 ml-2"><AlertTriangle className="h-3 w-3" />max cycles</Badge>
           )}
