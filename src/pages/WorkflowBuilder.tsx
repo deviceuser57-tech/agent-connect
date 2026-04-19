@@ -287,6 +287,11 @@ export const WorkflowBuilder: React.FC = () => {
   const [cognitiveEnabled, setCognitiveEnabled] = useState(false);
   const [pendingInference, setPendingInference] = useState<{ inference: ModeInference; userInput: string; traceId: string | null } | null>(null);
   const [cognitiveStage, setCognitiveStage] = useState<string>('');
+  const [liveCycles, setLiveCycles] = useState<OrchestrationCycle[]>([]);
+  const [cyclesActive, setCyclesActive] = useState(false);
+  const [cyclesConverged, setCyclesConverged] = useState(false);
+  const [cognitionTrace, setCognitionTrace] = useState<CognitionTrace | null>(null);
+  const [hotPathTaken, setHotPathTaken] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
@@ -626,13 +631,77 @@ export const WorkflowBuilder: React.FC = () => {
     }
   };
 
-  const acceptCognitiveContract = (mode: 'workflow' | 'cognitive' | 'hybrid') => {
-    if (!pendingInference) return;
-    const userInput = pendingInference.userInput;
+  const acceptCognitiveContract = async (mode: 'workflow' | 'cognitive' | 'hybrid') => {
+    if (!pendingInference || !currentWorkspace) return;
+    const { userInput, inference, traceId } = pendingInference;
     setSystemMode(mode);
     setPendingInference(null);
-    // Hand off to existing streaming pipeline with the locked-in mode
-    setTimeout(() => streamChat(userInput), 50);
+
+    // Run L4 cyclic orchestration (with L5 fidelity + L6 self-correction inline)
+    setIsLoading(true);
+    setCyclesActive(true);
+    setLiveCycles([]);
+    setCyclesConverged(false);
+    const startedAt = Date.now();
+    try {
+      const dna = await loadOrCreateDNA(currentWorkspace.id);
+      const decomposed = decompose(userInput);
+      const memory = await recallMemory(currentWorkspace.id, decomposed.intent);
+      const hotPath = !!(dna.hot_path?.enabled && inference.hot_path_eligible);
+      setHotPathTaken(hotPath);
+      setCognitiveStage(`L4: orchestration cycles${hotPath ? ' (hot-path)' : ''}…`);
+
+      const contract = { mode, user_intent: userInput, refinements: [], signed_at: new Date().toISOString(), inference };
+
+      const result = await runOrchestration({
+        userIntent: userInput,
+        contract,
+        memory,
+        dna,
+        hotPath,
+        onCycle: (cycle) => setLiveCycles((prev) => [...prev, cycle]),
+      });
+      setCyclesConverged(result.converged);
+
+      const fullTrace: CognitionTrace = {
+        L0: decomposed,
+        L1: inference,
+        L2: contract,
+        L3: { recalled: memory, reason: memory.length > 0 ? 'pgvector cosine similarity' : 'no prior memories' },
+        L4: { cycles: result.cycles, final_cycle_idx: result.cycles.length - 1, converged: result.converged },
+      };
+      setCognitionTrace(fullTrace);
+
+      if (traceId) {
+        await updateTrace(traceId, fullTrace as unknown as Record<string, unknown>, hotPath);
+        await completeTrace(traceId, result.final.proposed_spec, Date.now() - startedAt);
+      }
+
+      // Persist decision into memory graph for future L3 recall
+      await writeMemory({
+        workspaceId: currentWorkspace.id,
+        dnaVersion: dna.version,
+        contextSummary: `${decomposed.intent} | mode=${mode} | summary=${result.final.proposed_spec.summary}`,
+        reasoningPath: result.cycles.map((c) => ({ think: c.think, adjust: c.adjust })),
+        simulationBranches: result.final.simulate,
+        fidelityScores: result.final.fidelity ?? {},
+      });
+
+      setCognitiveStage('');
+      // Hand the converged spec to the existing streaming pipeline as context
+      const augmented = `${userInput}\n\n[Cognitive engine converged spec — use as authoritative blueprint]\n${JSON.stringify(result.final.proposed_spec, null, 2)}`;
+      setTimeout(() => streamChat(augmented), 50);
+    } catch (e) {
+      toast({
+        title: 'L4 orchestration failed',
+        description: e instanceof Error ? e.message : 'Unknown error',
+        variant: 'destructive',
+      });
+      setCognitiveStage('');
+    } finally {
+      setCyclesActive(false);
+      setIsLoading(false);
+    }
   };
 
   const refineCognitive = async (refinement: string) => {
