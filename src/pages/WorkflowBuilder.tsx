@@ -12,6 +12,10 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
 import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
+import { decompose, inferMode, recallMemory, startTrace, updateTrace } from '@/lib/cognitive/orchestrator';
+import { loadOrCreateDNA } from '@/lib/cognitive/dna';
+import { ArchitectureNegotiation } from '@/components/cognitive/ArchitectureNegotiation';
+import type { ModeInference } from '@/lib/cognitive/types';
 import {
   Send,
   Bot,
@@ -278,6 +282,9 @@ export const WorkflowBuilder: React.FC = () => {
   const [isDeploying, setIsDeploying] = useState(false);
   const [generatedWorkflow, setGeneratedWorkflow] = useState<WorkflowResult | null>(null);
   const [systemMode, setSystemMode] = useState<SystemMode>('auto');
+  const [cognitiveEnabled, setCognitiveEnabled] = useState(false);
+  const [pendingInference, setPendingInference] = useState<{ inference: ModeInference; userInput: string; traceId: string | null } | null>(null);
+  const [cognitiveStage, setCognitiveStage] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
