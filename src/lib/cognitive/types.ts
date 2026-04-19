@@ -52,13 +52,30 @@ export interface MemoryRecord {
   created_at: string;
 }
 
+export interface OrchestrationCycle {
+  think: string;
+  simulate: { branch: string; likelihood: number; outcome: string }[];
+  evaluate: { weaknesses: string[]; assumptions: string[] };
+  adjust: string;
+  proposed_spec: { summary: string; components: string[]; data_flow: string };
+  self_assessment: { confidence: number; divergence: number; stability: number };
+  fidelity?: {
+    confidence: number;
+    divergence: number;
+    stability: number;
+    overall: number;
+    passed: boolean;
+  };
+}
+
 export interface CognitionTrace {
   L0?: DecomposedInput;
   L1?: ModeInference;
   L2?: DecisionContract;
   L3?: { recalled: MemoryRecord[]; reason: string };
-  L4?: unknown;
+  L4?: { cycles: OrchestrationCycle[]; final_cycle_idx: number; converged: boolean };
   L5?: unknown;
+  L6?: unknown;
   L7?: unknown;
   L8?: unknown;
   L9?: unknown;
