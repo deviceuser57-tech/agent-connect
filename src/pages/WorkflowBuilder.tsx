@@ -842,6 +842,13 @@ export const WorkflowBuilder: React.FC = () => {
           <Loader2 className="h-3 w-3 animate-spin" /> {cognitiveStage}
         </div>
       )}
+      {(cyclesActive || liveCycles.length > 0) && (
+        <div className="border-b p-4 bg-muted/10">
+          <div className="max-w-4xl mx-auto">
+            <CycleVisualizer cycles={liveCycles} active={cyclesActive} converged={cyclesConverged} />
+          </div>
+        </div>
+      )}
 
       {/* Chat Area */}
       <ScrollArea className="flex-1 p-4">
@@ -912,7 +919,7 @@ export const WorkflowBuilder: React.FC = () => {
                 </div>
 
                 <Tabs defaultValue="preview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
+                  <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="preview" className="gap-1 text-xs">
                       <Eye className="h-3 w-3" />
                       Preview
@@ -933,7 +940,15 @@ export const WorkflowBuilder: React.FC = () => {
                       <Shield className="h-3 w-3" />
                       Safety
                     </TabsTrigger>
+                    <TabsTrigger value="cognition" className="gap-1 text-xs">
+                      <Brain className="h-3 w-3" />
+                      Cognition
+                    </TabsTrigger>
                   </TabsList>
+
+                  <TabsContent value="cognition" className="mt-4">
+                    <CognitionTab trace={cognitionTrace} hotPath={hotPathTaken} />
+                  </TabsContent>
 
                   {/* Visual Preview Tab */}
                   <TabsContent value="preview" className="mt-4">
