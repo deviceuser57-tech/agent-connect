@@ -577,7 +577,74 @@ export const WorkflowBuilder: React.FC = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // ─── Cognitive Engine Pipeline (L0 → L1 → L2 → L3) ───
+  const runCognitivePipeline = async (userMessage: string) => {
+    if (!userMessage.trim() || !currentWorkspace) return;
+    setIsLoading(true);
+    setCognitiveStage('L0: decomposing input…');
+    try {
+      // L0
+      const decomposed = decompose(userMessage);
+      // Load DNA (creates default if missing)
+      const dna = await loadOrCreateDNA(currentWorkspace.id);
+      const traceId = await startTrace({
+        workspaceId: currentWorkspace.id,
+        dnaId: dna.id,
+        userInput: userMessage,
+      });
+
+      // L1
+      setCognitiveStage('L1: inferring system mode…');
+      const inference = await inferMode(userMessage, dna);
+
+      // L3 (memory recall in background — non-blocking)
+      setCognitiveStage('L3: recalling memory…');
+      const memory = await recallMemory(currentWorkspace.id, decomposed.intent);
+
+      if (traceId) {
+        await updateTrace(traceId, {
+          L0: decomposed,
+          L1: inference,
+          L3: { recalled: memory, reason: 'top-K text overlap' },
+        });
+      }
+
+      // L2 — surface negotiation card
+      setPendingInference({ inference, userInput: userMessage, traceId });
+      setCognitiveStage('');
+    } catch (e) {
+      toast({
+        title: 'Cognitive pipeline failed',
+        description: e instanceof Error ? e.message : 'Unknown error',
+        variant: 'destructive',
+      });
+      setCognitiveStage('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const acceptCognitiveContract = (mode: 'workflow' | 'cognitive' | 'hybrid') => {
+    if (!pendingInference) return;
+    const userInput = pendingInference.userInput;
+    setSystemMode(mode);
+    setPendingInference(null);
+    // Hand off to existing streaming pipeline with the locked-in mode
+    setTimeout(() => streamChat(userInput), 50);
+  };
+
+  const refineCognitive = async (refinement: string) => {
+    if (!pendingInference) return;
+    const combined = `${pendingInference.userInput}\n\n[User refinement]: ${refinement}`;
+    setPendingInference(null);
+    await runCognitivePipeline(combined);
+  };
+
+  const handleSubmit = (text: string) => {
+    if (cognitiveEnabled) runCognitivePipeline(text);
+    else streamChat(text);
+  };
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       streamChat(input);
