@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.cognitive-l1-infer]
 verify_jwt = false
+
+[functions.cognitive-l4-orchestrate]
+verify_jwt = false
+
+[functions.cognitive-embed]
+verify_jwt = false
