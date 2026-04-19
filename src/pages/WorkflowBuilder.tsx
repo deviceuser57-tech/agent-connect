@@ -1201,7 +1201,7 @@ export const WorkflowBuilder: React.FC = () => {
             className="min-h-[60px] resize-none"
             disabled={isLoading}
           />
-          <Button onClick={() => streamChat(input)} disabled={isLoading || !input.trim()} size="icon" className="h-[60px] w-[60px]">
+          <Button onClick={() => handleSubmit(input)} disabled={isLoading || !input.trim()} size="icon" className="h-[60px] w-[60px]">
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </Button>
         </div>
