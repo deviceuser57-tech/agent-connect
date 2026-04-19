@@ -732,8 +732,38 @@ export const WorkflowBuilder: React.FC = () => {
               </Button>
             ))}
           </div>
+          <Button
+            size="sm"
+            variant={cognitiveEnabled ? 'default' : 'outline'}
+            className="h-7 text-xs gap-1"
+            onClick={() => setCognitiveEnabled((v) => !v)}
+            disabled={isLoading}
+          >
+            <Brain className="h-3 w-3" />
+            {cognitiveEnabled ? 'Cognitive Engine: ON' : 'Cognitive Engine: OFF'}
+          </Button>
         </div>
       </div>
+
+      {/* Negotiation card (L2) */}
+      {pendingInference && (
+        <div className="border-b p-4 bg-muted/20">
+          <div className="max-w-4xl mx-auto">
+            <ArchitectureNegotiation
+              inference={pendingInference.inference}
+              userInput={pendingInference.userInput}
+              onAccept={(c) => acceptCognitiveContract(c.mode)}
+              onRefine={refineCognitive}
+              onReject={() => { setPendingInference(null); setCognitiveStage(''); }}
+            />
+          </div>
+        </div>
+      )}
+      {cognitiveStage && (
+        <div className="border-b px-4 py-2 bg-primary/5 text-xs text-primary flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" /> {cognitiveStage}
+        </div>
+      )}
 
       {/* Chat Area */}
       <ScrollArea className="flex-1 p-4">
