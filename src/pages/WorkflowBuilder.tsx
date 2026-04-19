@@ -645,6 +645,7 @@ export const WorkflowBuilder: React.FC = () => {
     else streamChat(text);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       streamChat(input);
