@@ -38,7 +38,7 @@ export function CognitionTab({ trace, hotPath }: Props) {
                 <p><span className="font-semibold">Entities:</span> {trace.L0.entities.join(', ')}</p>
               )}
               {trace.L0.ambiguities?.length > 0 && (
-                <p className="text-amber-500"><span className="font-semibold">Ambiguities:</span> {trace.L0.ambiguities.join('; ')}</p>
+                <p className="text-muted-foreground"><span className="font-semibold">Ambiguities:</span> {trace.L0.ambiguities.join('; ')}</p>
               )}
             </CardContent>
           </Card>
