@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.process-document]
 verify_jwt = false
+
+[functions.cognitive-l1-infer]
+verify_jwt = false

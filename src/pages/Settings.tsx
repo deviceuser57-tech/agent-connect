@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings as SettingsIcon, Key, Globe, Palette, Moon, Sun, Bell, Database } from 'lucide-react';
 import { ApiKeyManager } from '@/components/settings/ApiKeyManager';
+import { DNAManager } from '@/components/cognitive/DNAManager';
+import { MemoryGraphPanel } from '@/components/cognitive/MemoryGraphPanel';
 
 export const Settings: React.FC = () => {
   const { t, theme, toggleTheme, lang, setLang } = useApp();
@@ -74,6 +76,12 @@ export const Settings: React.FC = () => {
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t.settings?.title || t.sidebar.settings}</h1>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">{t.settings?.systemSettings || 'System settings and preferences'}</p>
+      </div>
+
+      {/* Cognitive Architecture Section */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+        <DNAManager />
+        <MemoryGraphPanel />
       </div>
 
       <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">

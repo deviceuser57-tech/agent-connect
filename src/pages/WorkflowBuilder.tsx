@@ -12,6 +12,10 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
 import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
+import { decompose, inferMode, recallMemory, startTrace, updateTrace } from '@/lib/cognitive/orchestrator';
+import { loadOrCreateDNA } from '@/lib/cognitive/dna';
+import { ArchitectureNegotiation } from '@/components/cognitive/ArchitectureNegotiation';
+import type { ModeInference } from '@/lib/cognitive/types';
 import {
   Send,
   Bot,
@@ -278,6 +282,9 @@ export const WorkflowBuilder: React.FC = () => {
   const [isDeploying, setIsDeploying] = useState(false);
   const [generatedWorkflow, setGeneratedWorkflow] = useState<WorkflowResult | null>(null);
   const [systemMode, setSystemMode] = useState<SystemMode>('auto');
+  const [cognitiveEnabled, setCognitiveEnabled] = useState(false);
+  const [pendingInference, setPendingInference] = useState<{ inference: ModeInference; userInput: string; traceId: string | null } | null>(null);
+  const [cognitiveStage, setCognitiveStage] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
@@ -570,10 +577,78 @@ export const WorkflowBuilder: React.FC = () => {
     }
   };
 
+  // ─── Cognitive Engine Pipeline (L0 → L1 → L2 → L3) ───
+  const runCognitivePipeline = async (userMessage: string) => {
+    if (!userMessage.trim() || !currentWorkspace) return;
+    setIsLoading(true);
+    setCognitiveStage('L0: decomposing input…');
+    try {
+      // L0
+      const decomposed = decompose(userMessage);
+      // Load DNA (creates default if missing)
+      const dna = await loadOrCreateDNA(currentWorkspace.id);
+      const traceId = await startTrace({
+        workspaceId: currentWorkspace.id,
+        dnaId: dna.id,
+        userInput: userMessage,
+      });
+
+      // L1
+      setCognitiveStage('L1: inferring system mode…');
+      const inference = await inferMode(userMessage, dna);
+
+      // L3 (memory recall in background — non-blocking)
+      setCognitiveStage('L3: recalling memory…');
+      const memory = await recallMemory(currentWorkspace.id, decomposed.intent);
+
+      if (traceId) {
+        await updateTrace(traceId, {
+          L0: decomposed,
+          L1: inference,
+          L3: { recalled: memory, reason: 'top-K text overlap' },
+        });
+      }
+
+      // L2 — surface negotiation card
+      setPendingInference({ inference, userInput: userMessage, traceId });
+      setCognitiveStage('');
+    } catch (e) {
+      toast({
+        title: 'Cognitive pipeline failed',
+        description: e instanceof Error ? e.message : 'Unknown error',
+        variant: 'destructive',
+      });
+      setCognitiveStage('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const acceptCognitiveContract = (mode: 'workflow' | 'cognitive' | 'hybrid') => {
+    if (!pendingInference) return;
+    const userInput = pendingInference.userInput;
+    setSystemMode(mode);
+    setPendingInference(null);
+    // Hand off to existing streaming pipeline with the locked-in mode
+    setTimeout(() => streamChat(userInput), 50);
+  };
+
+  const refineCognitive = async (refinement: string) => {
+    if (!pendingInference) return;
+    const combined = `${pendingInference.userInput}\n\n[User refinement]: ${refinement}`;
+    setPendingInference(null);
+    await runCognitivePipeline(combined);
+  };
+
+  const handleSubmit = (text: string) => {
+    if (cognitiveEnabled) runCognitivePipeline(text);
+    else streamChat(text);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      streamChat(input);
+      handleSubmit(input);
     }
   };
 
@@ -657,8 +732,38 @@ export const WorkflowBuilder: React.FC = () => {
               </Button>
             ))}
           </div>
+          <Button
+            size="sm"
+            variant={cognitiveEnabled ? 'default' : 'outline'}
+            className="h-7 text-xs gap-1"
+            onClick={() => setCognitiveEnabled((v) => !v)}
+            disabled={isLoading}
+          >
+            <Brain className="h-3 w-3" />
+            {cognitiveEnabled ? 'Cognitive Engine: ON' : 'Cognitive Engine: OFF'}
+          </Button>
         </div>
       </div>
+
+      {/* Negotiation card (L2) */}
+      {pendingInference && (
+        <div className="border-b p-4 bg-muted/20">
+          <div className="max-w-4xl mx-auto">
+            <ArchitectureNegotiation
+              inference={pendingInference.inference}
+              userInput={pendingInference.userInput}
+              onAccept={(c) => acceptCognitiveContract(c.mode)}
+              onRefine={refineCognitive}
+              onReject={() => { setPendingInference(null); setCognitiveStage(''); }}
+            />
+          </div>
+        </div>
+      )}
+      {cognitiveStage && (
+        <div className="border-b px-4 py-2 bg-primary/5 text-xs text-primary flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" /> {cognitiveStage}
+        </div>
+      )}
 
       {/* Chat Area */}
       <ScrollArea className="flex-1 p-4">
@@ -1096,7 +1201,7 @@ export const WorkflowBuilder: React.FC = () => {
             className="min-h-[60px] resize-none"
             disabled={isLoading}
           />
-          <Button onClick={() => streamChat(input)} disabled={isLoading || !input.trim()} size="icon" className="h-[60px] w-[60px]">
+          <Button onClick={() => handleSubmit(input)} disabled={isLoading || !input.trim()} size="icon" className="h-[60px] w-[60px]">
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </Button>
         </div>
