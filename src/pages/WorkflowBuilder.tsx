@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
 import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
