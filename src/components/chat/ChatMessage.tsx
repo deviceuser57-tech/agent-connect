@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { MessageFeedback } from './MessageFeedback';
 import { CitationDisplay, Citation } from './CitationDisplay';
 import { CorrectionInterface } from './CorrectionInterface';
+import { useSettings } from '@/contexts/SettingsContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -27,6 +28,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   showFeedback = true,
 }) => {
   const [showCorrection, setShowCorrection] = useState(false);
+  const { settings } = useSettings();
   const isAssistant = message.role === 'assistant';
 
   return (
@@ -63,8 +65,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             )}
           </div>
 
-          {/* Citations */}
-          {isAssistant && message.citations && message.citations.length > 0 && (
+          {/* Citations — gated by global setting */}
+          {isAssistant && settings.citationDisplay && message.citations && message.citations.length > 0 && (
             <CitationDisplay citations={message.citations} />
           )}
 

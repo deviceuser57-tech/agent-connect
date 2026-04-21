@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppProvider } from "@/contexts/AppContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Index from "@/pages/Index";
@@ -135,6 +136,7 @@ function AnimatedRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AppProvider>
+      <SettingsProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -142,6 +144,7 @@ const App = () => (
           <AnimatedRoutes />
         </BrowserRouter>
       </TooltipProvider>
+      </SettingsProvider>
     </AppProvider>
   </QueryClientProvider>
 );
