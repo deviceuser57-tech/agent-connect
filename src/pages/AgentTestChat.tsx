@@ -16,6 +16,7 @@ import { SmartSuggestions, generateAgentTestSuggestions } from '@/components/cha
 import { PromptRefinement, refinePrompt, usePromptRefinement } from '@/components/chat/PromptRefinement';
 import { ChatMessage, ChatMessageData } from '@/components/chat/ChatMessage';
 import { getSupabaseUrl } from '@/lib/env';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Message extends ChatMessageData {
   timestamp: Date;
@@ -168,7 +169,7 @@ export const AgentTestChat: React.FC = () => {
           workspace_id: currentWorkspace?.id,
           enable_agentic: true,
           enable_memory: false,
-          enable_hallucination_check: true,
+          enable_hallucination_check: settings.hallucinationCheck,
           enable_adaptive_strategy: true,
           rework_settings: {
             enabled: true,

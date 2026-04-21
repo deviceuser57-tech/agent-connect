@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useSettings } from '@/contexts/SettingsContext';
 import { validateResponse, generateCorrectionPrompt, checkConfigurationCompatibility, exportAsJSON } from '@/lib/responseValidation';
 import type { ResponseRules, ValidationScore, ReworkSettings } from '@/types';
 
@@ -150,7 +151,7 @@ export const AgentTestChatDialog: React.FC<AgentTestChatDialogProps> = ({
           workspace_id: workspaceId,
           enable_agentic: true,
           enable_memory: false,
-          enable_hallucination_check: true,
+          enable_hallucination_check: settingsRef.current.hallucinationCheck,
           enable_adaptive_strategy: true,
           rework_settings: reworkSettings
         }
