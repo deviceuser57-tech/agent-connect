@@ -36,6 +36,7 @@ const RAG_CHAT_URL = `${getSupabaseUrl()}/functions/v1/rag-chat`;
 export const AgentTestChat: React.FC = () => {
   const { t } = useApp();
   const { currentWorkspace } = useWorkspace();
+  const { settings } = useSettings();
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);

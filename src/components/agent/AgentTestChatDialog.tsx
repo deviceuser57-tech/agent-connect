@@ -73,6 +73,9 @@ export const AgentTestChatDialog: React.FC<AgentTestChatDialogProps> = ({
   onSave
 }) => {
   const { toast } = useToast();
+  const { settings } = useSettings();
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
