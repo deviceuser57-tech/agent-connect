@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
 import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
@@ -278,13 +279,16 @@ interface WorkflowResult {
 type SystemMode = 'auto' | 'workflow' | 'cognitive' | 'hybrid';
 
 export const WorkflowBuilder: React.FC = () => {
+  const { settings } = useSettings();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [generatedWorkflow, setGeneratedWorkflow] = useState<WorkflowResult | null>(null);
   const [systemMode, setSystemMode] = useState<SystemMode>('auto');
-  const [cognitiveEnabled, setCognitiveEnabled] = useState(false);
+  const [cognitiveEnabled, setCognitiveEnabled] = useState(settings.cognitiveEngineEnabled);
+  // Sync local toggle when global settings change
+  useEffect(() => { setCognitiveEnabled(settings.cognitiveEngineEnabled); }, [settings.cognitiveEngineEnabled]);
   const [pendingInference, setPendingInference] = useState<{ inference: ModeInference; userInput: string; traceId: string | null } | null>(null);
   const [cognitiveStage, setCognitiveStage] = useState<string>('');
   const [liveCycles, setLiveCycles] = useState<OrchestrationCycle[]>([]);
@@ -647,7 +651,7 @@ export const WorkflowBuilder: React.FC = () => {
       const dna = await loadOrCreateDNA(currentWorkspace.id);
       const decomposed = decompose(userInput);
       const memory = await recallMemory(currentWorkspace.id, decomposed.intent);
-      const hotPath = !!(dna.hot_path?.enabled && inference.hot_path_eligible);
+      const hotPath = !!(settings.hotPathEnabled && dna.hot_path?.enabled && inference.hot_path_eligible);
       setHotPathTaken(hotPath);
       setCognitiveStage(`L4: orchestration cycles${hotPath ? ' (hot-path)' : ''}…`);
 

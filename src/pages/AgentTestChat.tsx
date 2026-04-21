@@ -16,6 +16,7 @@ import { SmartSuggestions, generateAgentTestSuggestions } from '@/components/cha
 import { PromptRefinement, refinePrompt, usePromptRefinement } from '@/components/chat/PromptRefinement';
 import { ChatMessage, ChatMessageData } from '@/components/chat/ChatMessage';
 import { getSupabaseUrl } from '@/lib/env';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Message extends ChatMessageData {
   timestamp: Date;
@@ -35,6 +36,7 @@ const RAG_CHAT_URL = `${getSupabaseUrl()}/functions/v1/rag-chat`;
 export const AgentTestChat: React.FC = () => {
   const { t } = useApp();
   const { currentWorkspace } = useWorkspace();
+  const { settings } = useSettings();
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -168,7 +170,7 @@ export const AgentTestChat: React.FC = () => {
           workspace_id: currentWorkspace?.id,
           enable_agentic: true,
           enable_memory: false,
-          enable_hallucination_check: true,
+          enable_hallucination_check: settings.hallucinationCheck,
           enable_adaptive_strategy: true,
           rework_settings: {
             enabled: true,
