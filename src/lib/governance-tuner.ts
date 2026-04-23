@@ -100,18 +100,23 @@ export const GovernanceTuner = {
   incrementExecution: async (sessionId: string) => {
     const { data: state } = await supabase.from('governance_state').select('*').eq('session_id', sessionId).single();
     if (state) {
-      if (state.is_drift_locked) return; // Static while locked
+      if (state.is_drift_locked) return state; // Static while locked
 
       const newCounter = (state.stability_window_counter || 0) + 1;
-      await supabase.from('governance_state').update({ 
-        stability_window_counter: newCounter 
-      }).eq('session_id', sessionId);
+      const executionCount = (state.executions_since_last_tune || 0) + 1;
+
+      const { data: updatedState } = await supabase.from('governance_state').update({ 
+        stability_window_counter: newCounter,
+        executions_since_last_tune: executionCount
+      }).eq('session_id', sessionId).select().single();
       
       if (newCounter >= GovernanceTuner.STABILITY_WINDOW) {
         await GovernanceTuner.tune(sessionId);
       }
+      return updatedState || state;
     } else {
-      await supabase.from('governance_state').insert({ session_id: sessionId });
+      const { data: newState } = await supabase.from('governance_state').insert({ session_id: sessionId }).select().single();
+      return newState;
     }
   }
 };

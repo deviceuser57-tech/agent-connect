@@ -7,9 +7,10 @@ import { ConflictDetector } from './conflict-detector';
 import { GovernanceArbitrator } from './governance-arbitrator';
 import { GovernanceReflection } from './governance-reflection';
 import { GovernanceCausality } from './governance-causality-graph';
+import { PolicyEvolver } from './policy-evolver';
 
 /**
- * ExecutionInterface (EIL v1.5 - Meta-Cognitive Shield)
+ * ExecutionInterface (EIL v1.6 - Self-Constitutional Shield)
  */
 export const ExecutionInterface = {
   executeAction: async (sessionId: string, action: string, context: any) => {
@@ -31,7 +32,7 @@ export const ExecutionInterface = {
     // 1. Fetch Internal Intent (DNA)
     const dnaTraits = await DynamicDNAEngine.fetchActiveDNA(sessionId);
 
-    // 2. Fetch External Control (Governance)
+    // 2. Fetch External Control (Governance with Dynamic Rules)
     const govDecision = await GovernanceEngine.validateExecutionPermission(sessionId, action, userRole, projectedRisk);
     
     // 3. Conflict Detection
@@ -79,12 +80,18 @@ export const ExecutionInterface = {
     // 7. Kernel Execution (Deterministic Core)
     const result = await runExecutionStep(sessionId, payload.currentState, event, payload);
 
-    // 8. [META-LEARNING & REFLECTION LOOP]
+    // 8. [EVOLUTIONARY FEEDBACK LOOP]
     const outcomeScore = result.success ? 0.1 : 0.9;
     
     if (govTrace) {
       await GovernanceMemory.correlateOutcome(govTrace.id, outcomeScore);
-      await GovernanceTuner.incrementExecution(sessionId);
+      const { executions_since_last_tune } = await GovernanceTuner.incrementExecution(sessionId);
+      
+      // Every 20 executions, evolve the constitution
+      if (executions_since_last_tune >= PolicyEvolver.EVOLUTION_CYCLE) {
+          console.log('[CONSTITUTION] Triggering policy evolution cycle...');
+          PolicyEvolver.evolve(sessionId).catch(console.error);
+      }
     }
 
     if (arbitration.conflictLogId) {
