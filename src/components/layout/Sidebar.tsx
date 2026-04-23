@@ -17,7 +17,8 @@ import {
   Moon,
   Sun,
   Languages,
-  GitBranch
+  GitBranch,
+  Cloud
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
@@ -48,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) =
     { path: '/workflow-runs', label: 'Workflow Runs', icon: Play, id: 'nav-runs' },
     { path: '/analytics', label: t.sidebar.analytics, icon: BarChart3, id: 'nav-analytics' },
     { path: '/team', label: 'Team', icon: Users2, id: 'nav-team' },
+    { path: '/cloud', label: 'Lovable Cloud', icon: Cloud, id: 'nav-cloud' },
     { path: '/help', label: 'Help', icon: HelpCircle, id: 'nav-help' },
   ];
 

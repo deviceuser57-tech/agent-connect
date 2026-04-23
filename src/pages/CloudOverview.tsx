@@ -119,7 +119,7 @@ export default function CloudOverview() {
               )}
             </Button>
             {status === "connected" && (
-              <span className="text-sm text-green-600 flex items-center gap-1">
+              <span className="text-sm text-primary flex items-center gap-1">
                 <CheckCircle2 className="h-4 w-4" /> All systems operational
               </span>
             )}
@@ -136,7 +136,7 @@ export default function CloudOverview() {
                 <div key={r.name} className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-2">
                     {r.ok ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
                     ) : (
                       <XCircle className="h-4 w-4 text-destructive" />
                     )}

@@ -29,6 +29,7 @@ import { Help } from "@/pages/Help";
 import { WorkflowBuilder } from "@/pages/WorkflowBuilder";
 import { WorkflowEditor } from "@/pages/WorkflowEditor";
 import { WorkflowCanvas } from "@/pages/WorkflowCanvas";
+import CloudOverview from "@/pages/CloudOverview";
 import { AIAssistant } from "@/components/assistant/AIAssistant";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
@@ -119,6 +120,7 @@ function AnimatedRoutes() {
                       <Route path="/privacy" element={<AnimatedPage><PrivacyPolicy /></AnimatedPage>} />
                       <Route path="/terms" element={<AnimatedPage><TermsOfService /></AnimatedPage>} />
                       <Route path="/help" element={<AnimatedPage><Help /></AnimatedPage>} />
+                      <Route path="/cloud" element={<AnimatedPage><CloudOverview /></AnimatedPage>} />
                       <Route path="*" element={<AnimatedPage><NotFound /></AnimatedPage>} />
                     </Routes>
                   </AnimatePresence>
