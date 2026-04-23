@@ -44,7 +44,7 @@ export const evaluateTransition = (input: GecInput): GecValidation => {
   }
 
   // 2. State Machine Transition Rules
-  const transitions: Record<SystemState, Record<string, SystemState>> = {
+  const transitions: Partial<Record<SystemState, Record<string, SystemState>>> = {
     'IDLE': { 'START': 'PHASE_INITIALIZING' },
     'PHASE_INITIALIZING': { 'INITIALIZED': 'PHASE_RUNNING' },
     'PHASE_RUNNING': { 'COMPLETE': 'PHASE_VALIDATING' },

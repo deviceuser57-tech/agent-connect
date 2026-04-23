@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
 import { ESGL_CONSTANTS } from '../constitution/icos.constitution';
 
 /**

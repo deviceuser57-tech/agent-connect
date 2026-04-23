@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
 
 /**
  * Snapshot Engine (B3)
@@ -21,10 +21,8 @@ const canonicalStringify = (obj: any): string => {
 const generateHash = async (data: any): Promise<string> => {
   const canonicalString = canonicalStringify(data);
   const msgBuffer = new TextEncoder().encode(canonicalString);
-  const hashBuffer = await Uint8Array.from(
-    await window.crypto.subtle.digest('SHA-256', msgBuffer)
-  );
-  return Array.from(hashBuffer)
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 };

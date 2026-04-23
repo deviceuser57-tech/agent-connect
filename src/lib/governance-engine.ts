@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
 import { GovernanceMemory } from './governance-memory';
 import { GovernanceTuner, GovernanceMode } from './governance-tuner';
 
