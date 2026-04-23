@@ -5,9 +5,11 @@ import { GovernanceTuner } from './governance-tuner';
 import { DynamicDNAEngine } from './dna-engine';
 import { ConflictDetector } from './conflict-detector';
 import { GovernanceArbitrator } from './governance-arbitrator';
+import { GovernanceReflection } from './governance-reflection';
+import { GovernanceCausality } from './governance-causality-graph';
 
 /**
- * ExecutionInterface (EIL v1.4 - Arbitrated Shield)
+ * ExecutionInterface (EIL v1.5 - Meta-Cognitive Shield)
  */
 export const ExecutionInterface = {
   executeAction: async (sessionId: string, action: string, context: any) => {
@@ -39,6 +41,13 @@ export const ExecutionInterface = {
     const arbitration = await GovernanceArbitrator.arbitrate(sessionId, conflict);
     const finalDecision = arbitration.decision;
 
+    // 5. [META-COGNITIVE CAUSALITY MAPPING]
+    await GovernanceCausality.mapCausality(sessionId, {
+       dnaInfluence: dnaTraits.exploration_bias || 0.5,
+       govPressure: govDecision.requiresApproval ? 0.8 : 0.2,
+       arbitrationResult: arbitration.reason
+    });
+
     if (!finalDecision.allowed || finalDecision.isBlocked) {
       return { 
         success: false, 
@@ -53,7 +62,7 @@ export const ExecutionInterface = {
       return { success: false, error: "PENDING_APPROVAL", reason: "Action queued via arbitration." };
     }
 
-    // 5. Log Authorized Entry with Signature
+    // 6. Log Authorized Entry
     const { data: govTrace } = await GovernanceEngine.logGovernanceTrace({
       sessionId, action, userRole, isBlocked: false, isApproved: true, 
       shadowDetected: finalDecision.shadowDetected || false,
@@ -67,10 +76,10 @@ export const ExecutionInterface = {
        rollback: !!context.rollback
     };
 
-    // 6. Kernel Execution (Deterministic Core)
+    // 7. Kernel Execution (Deterministic Core)
     const result = await runExecutionStep(sessionId, payload.currentState, event, payload);
 
-    // 7. [META-LEARNING LOOP]
+    // 8. [META-LEARNING & REFLECTION LOOP]
     const outcomeScore = result.success ? 0.1 : 0.9;
     
     if (govTrace) {
@@ -80,6 +89,7 @@ export const ExecutionInterface = {
 
     if (arbitration.conflictLogId) {
       await GovernanceArbitrator.updateAuthority(sessionId, arbitration.conflictLogId, outcomeScore);
+      await GovernanceReflection.reflect(sessionId, arbitration.conflictLogId, outcomeScore);
     }
 
     return result;
