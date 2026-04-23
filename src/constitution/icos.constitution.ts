@@ -26,6 +26,30 @@ export const ICOS_CONSTITUTION: ICOSCognitiveDNA = {
   },
 };
 
+// DWE (Decay Weighted Evidence) constants — used by ESVL / MemoryGraph for temporal decay.
+export const DWE_CONSTANTS = {
+  DECAY_CONSTANT: 0.0000001, // ~half-life over hours; tuned for runtime causal weighting
+};
+
+// ModeState — runtime cognitive mode descriptor used by GEC, ModeInferenceEngine, kernel.
+export interface ModeState {
+  mode: 'EXECUTION' | 'EXPLORATION' | 'RECOVERY' | 'ADVERSARIAL' | 'OPTIMIZATION';
+  confidence: number;
+  entropyScore: number;
+  stabilityIndex: number;
+}
+
+// GraphNode — minimal causal-memory node descriptor used by mode inference and ESVL.
+export interface GraphNode {
+  id: string;
+  state: string;
+  weight: number;
+  effectiveWeight?: number;
+  payload?: any;
+  created_at: string;
+  causal_parent?: string;
+}
+
 export type ModeType = 'EXPLORATION' | 'EXECUTION' | 'RECOVERY' | 'OPTIMIZATION' | 'ADVERSARIAL';
 
 // ESGL v1.0 Evolution Stability Governance Constants

@@ -86,7 +86,7 @@ export const runExecutionStep = async (
     outcomeScore = 0.5; // DEGRADED (0.3 - 0.6)
   }
 
-  const actualOutcomeWeight = Math.min(outcomeScore + ((payload.severity_factor || 0.1) * 0.4), 1.0);
+  let actualOutcomeWeight = Math.min(outcomeScore + ((payload.severity_factor || 0.1) * 0.4), 1.0);
   let bias = actualOutcomeWeight - projectedRisk; // gradient difference
   let deviation = Math.abs(bias);
 
@@ -220,6 +220,9 @@ export const runExecutionStep = async (
       sessionId,
       stateBefore: currentState,
       inferredMode: 'EXECUTION',
+      chaosType: payload.chaosType || 'NONE',
+      chaosLevel: payload.chaosLevel || 0,
+      stabilityBudget: payload.stabilityBudget || 1.0,
       gecDecision: decision,
       selectedPath: decision.primary,
       finalState: decision.primary

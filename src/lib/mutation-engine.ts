@@ -1,4 +1,9 @@
 import { StabilityGovernor } from './stability-governor';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
+
+// Local stub — full simulation engine lives in esvl/orchestrator; mutation safety
+// only needs a binary stability hint here. Kept as compatibility shim.
+const simulateScenario = (_kind: string): string[] => [];
 
 /**
  * MutationEngine (Phase 5 + ESGL v1.0)

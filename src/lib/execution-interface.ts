@@ -44,7 +44,7 @@ export const ExecutionInterface = {
 
     // 5. [META-COGNITIVE CAUSALITY MAPPING]
     await GovernanceCausality.mapCausality(sessionId, {
-       dnaInfluence: dnaTraits.exploration_bias || 0.5,
+       dnaInfluence: (dnaTraits as any).exploration_bias ?? (dnaTraits as any).risk_tolerance ?? 0.5,
        govPressure: govDecision.requiresApproval ? 0.8 : 0.2,
        arbitrationResult: arbitration.reason
     });
