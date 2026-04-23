@@ -1,23 +1,51 @@
 import { runExecutionStep } from './orchestrator';
-import { GovernanceEngine, GovernanceRole } from './governance-engine';
 import { GovernanceMemory } from './governance-memory';
 import { GovernanceTuner } from './governance-tuner';
-import { DynamicDNAEngine } from './dna-engine';
-import { ConflictDetector } from './conflict-detector';
-import { GovernanceArbitrator } from './governance-arbitrator';
 import { GovernanceReflection } from './governance-reflection';
 import { GovernanceCausality } from './governance-causality-graph';
 import { PolicyEvolver } from './policy-evolver';
+import { CEC } from './cognitive-enforcement-core';
 
 /**
- * ExecutionInterface (EIL v1.6 - Self-Constitutional Shield)
+ * ExecutionInterface (EIL v1.7 - UCSGK Shield)
+ * Architecture Type: UNIFIED COGNITIVE ENFORCEMENT
  */
 export const ExecutionInterface = {
   executeAction: async (sessionId: string, action: string, context: any) => {
     const startTime = Date.now();
-    const userRole: GovernanceRole = context.userRole || 'EXECUTOR'; 
-    const projectedRisk = context.projectedRisk || 0;
+    
+    // 1. Unified Gateway (CEC v1.7)
+    // This merges DNA, Governance, Security, and Arbitration.
+    const cecResult = await CEC.validateExecution(sessionId, action, context);
 
+    // 2. Handling Decision
+    if (!cecResult.allowed) {
+      return { 
+        success: false, 
+        error: "CEC_GATE_BLOCKED", 
+        reason: cecResult.auditStream.governanceDecision,
+        violation: cecResult.auditStream.securityDecision
+      };
+    }
+
+    if (cecResult.requiresApproval) {
+      // Final decision is valid but requires human approval per constitution
+      return { success: false, error: "PENDING_APPROVAL", reason: "Action requires constitutional approval." };
+    }
+
+    // 3. Mapping Causal Pressure
+    await GovernanceCausality.mapCausality(sessionId, {
+       dnaInfluence: cecResult.auditStream.intent === 'READ_INTENT' ? 0.2 : 0.8,
+       govPressure: cecResult.auditStream.riskScore,
+       arbitrationResult: cecResult.auditStream.finalDecision
+    });
+
+    const payload = {
+       ...context, latency: Date.now() - startTime,
+       severity_factor: context.severity_factor || 0.1,
+    };
+
+    // 4. Kernel Execution (Deterministic Core)
     const actionToEventMap: Record<string, string> = {
       'START_WORKFLOW': 'START',
       'APPROVE_STEP': 'APPROVE',
@@ -25,78 +53,22 @@ export const ExecutionInterface = {
       'FORCE_UNLOCK': 'UNLOCK',
       'TRIGGER_RECOVERY': 'RECOVER'
     };
-
-    const event = actionToEventMap[action];
-    if (!event) throw new Error(`EIL Violation: Unknown action binding for ${action}`);
-
-    // 1. Fetch Internal Intent (DNA)
-    const dnaTraits = await DynamicDNAEngine.fetchActiveDNA(sessionId);
-
-    // 2. Fetch External Control (Governance with Dynamic Rules)
-    const govDecision = await GovernanceEngine.validateExecutionPermission(sessionId, action, userRole, projectedRisk);
+    const event = actionToEventMap[action] || 'EXECUTE';
     
-    // 3. Conflict Detection
-    const conflict = ConflictDetector.detect(dnaTraits, govDecision, projectedRisk);
-
-    // 4. Dual-Intelligence Arbitration
-    const arbitration = await GovernanceArbitrator.arbitrate(sessionId, conflict);
-    const finalDecision = arbitration.decision;
-
-    // 5. [META-COGNITIVE CAUSALITY MAPPING]
-    await GovernanceCausality.mapCausality(sessionId, {
-       dnaInfluence: (dnaTraits as any).exploration_bias ?? (dnaTraits as any).risk_tolerance ?? 0.5,
-       govPressure: govDecision.requiresApproval ? 0.8 : 0.2,
-       arbitrationResult: arbitration.reason
-    });
-
-    if (!finalDecision.allowed || finalDecision.isBlocked) {
-      return { 
-        success: false, 
-        error: "ARBITRATION_BLOCK", 
-        reason: arbitration.reason,
-        conflictLogId: arbitration.conflictLogId 
-      };
-    }
-
-    if (finalDecision.requiresApproval) {
-      await GovernanceEngine.queueAction(sessionId, action, userRole, context);
-      return { success: false, error: "PENDING_APPROVAL", reason: "Action queued via arbitration." };
-    }
-
-    // 6. Log Authorized Entry
-    const { data: govTrace } = await GovernanceEngine.logGovernanceTrace({
-      sessionId, action, userRole, isBlocked: false, isApproved: true, 
-      shadowDetected: finalDecision.shadowDetected || false,
-      signature: finalDecision.signature,
-      projectedRiskAtTime: projectedRisk
-    });
-
-    const payload = {
-       ...context, latency: Date.now() - startTime, retryCount: context.retryCount || 0,
-       severity_factor: context.severity_factor || 0.1, chaosType: context.chaosType || 'NONE',
-       rollback: !!context.rollback
-    };
-
-    // 7. Kernel Execution (Deterministic Core)
     const result = await runExecutionStep(sessionId, payload.currentState, event, payload);
 
-    // 8. [EVOLUTIONARY FEEDBACK LOOP]
+    // 5. Evolutionary Feedback Loop
     const outcomeScore = result.success ? 0.1 : 0.9;
     
-    if (govTrace) {
-      await GovernanceMemory.correlateOutcome(govTrace.id, outcomeScore);
-      const { executions_since_last_tune } = await GovernanceTuner.incrementExecution(sessionId);
-      
-      // Every 20 executions, evolve the constitution
-      if (executions_since_last_tune >= PolicyEvolver.EVOLUTION_CYCLE) {
-          console.log('[CONSTITUTION] Triggering policy evolution cycle...');
-          PolicyEvolver.evolve(sessionId).catch(console.error);
-      }
+    const { executions_since_last_tune } = await GovernanceTuner.incrementExecution(sessionId);
+    
+    if (executions_since_last_tune && executions_since_last_tune >= PolicyEvolver.EVOLUTION_CYCLE) {
+        PolicyEvolver.evolve(sessionId).catch(console.error);
     }
 
-    if (arbitration.conflictLogId) {
-      await GovernanceArbitrator.updateAuthority(sessionId, arbitration.conflictLogId, outcomeScore);
-      await GovernanceReflection.reflect(sessionId, arbitration.conflictLogId, outcomeScore);
+    // Correlation & Reflection
+    if (cecResult.arbitration?.conflictLogId) {
+      await GovernanceReflection.reflect(sessionId, cecResult.arbitration.conflictLogId, outcomeScore);
     }
 
     return result;
