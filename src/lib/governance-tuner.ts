@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
 import { GovernanceDecay } from './governance-decay';
 import { GovernanceSignalRouter } from './governance-signal-router';
 

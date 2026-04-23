@@ -9,7 +9,7 @@ import { MutationEngine } from './mutation-engine';
 import { ObservabilityEngine } from './observability';
 import { CollectiveNegotiator } from './collective-negotiator';
 import { GlobalCognitiveBus } from './cognitive-bus';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
 
 /**
  * Orchestrator (CMACK v2.3 - Self-Learning Kernel)

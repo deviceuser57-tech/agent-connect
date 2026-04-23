@@ -1,4 +1,14 @@
-export const ICOS_CONSTITUTION: CognitiveDNA = {
+// CMACK Constitution — legacy CognitiveDNA shape (kept compatible with kernel logic).
+// The Phase 10 schema's CognitiveDNA type lives in src/lib/cognitive/types.ts and is
+// structurally different (workspace-scoped record). This local interface preserves the
+// deterministic kernel's expected shape without touching either type system.
+export interface ICOSCognitiveDNA {
+  traits: { autonomy_level: number; risk_tolerance: number; reasoning_depth: number };
+  constraints: { max_tokens: number; max_loops: number; allowed_tools: string[] };
+  governance: { approval_required: boolean; fail_safe_enabled: boolean; audit_level: string };
+}
+
+export const ICOS_CONSTITUTION: ICOSCognitiveDNA = {
   traits: {
     autonomy_level: 0.7,
     risk_tolerance: 0.2,

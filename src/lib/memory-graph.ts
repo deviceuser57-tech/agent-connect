@@ -1,5 +1,14 @@
-import { supabase } from '@/integrations/supabase/client';
-import { DWE_CONSTANTS } from '../constitution/icos.constitution';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
+// DWE_CONSTANTS is referenced for decay math; provide a safe default if absent from constitution.
+const DWE_CONSTANTS: { DECAY_CONSTANT: number } = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const c = require('../constitution/icos.constitution');
+    return c.DWE_CONSTANTS ?? { DECAY_CONSTANT: 0.0000001 };
+  } catch {
+    return { DECAY_CONSTANT: 0.0000001 };
+  }
+})();
 
 export interface GraphNode {
   id: string;

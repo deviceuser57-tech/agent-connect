@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
 import { ICOS_CONSTITUTION } from '../constitution/icos.constitution';
 import { MemoryGraphEngine } from './memory-graph';
 
