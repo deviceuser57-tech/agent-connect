@@ -1,5 +1,5 @@
 import { ExecutionInterface } from './execution-interface';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
 
 /**
  * KERNEL-INJECTED INTEGRITY TEST (GRAVITY v1.6)
@@ -59,7 +59,7 @@ export const runKernelIntegrityTest = async (sessionId: string) => {
     reflection_logged: !!reflection?.length,
     assertions: {
       governance_shield_active: govTrace?.[0]?.is_blocked === true,
-      trace_integrity_preserved: !!execTrace || !result.success, // If blocked, exec_trace might not exist if it didn't hit kernel
+      trace_integrity_preserved: !!execTrace || !result.success,
       reflection_loop_closed: reflection?.length > 0
     }
   };
