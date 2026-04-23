@@ -9,6 +9,11 @@ const cors = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "No authorization header" }), { status: 401, headers: cors });
+    }
+
     const { text } = await req.json();
     if (!text || typeof text !== "string") throw new Error("text required");
     const apiKey = Deno.env.get("LOVABLE_API_KEY");

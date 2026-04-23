@@ -34,6 +34,11 @@ If prior_cycles exist, you MUST address their evaluate.weaknesses in your think/
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "No authorization header" }), { status: 401, headers: cors });
+    }
+
     const { user_intent, decision_contract, memory_recall, prior_cycles, dna } = await req.json();
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
