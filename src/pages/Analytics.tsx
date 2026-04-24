@@ -627,7 +627,7 @@ export const Analytics: React.FC = () => {
                         />
                         <span className="text-muted-foreground capitalize">{item.name.replace('_', ' ')}</span>
                       </div>
-                      <span className="font-medium">{item.value}</span>
+                      <span className="font-medium">{String(item.value)}</span>
                     </div>
                   ))}
                 </div>
@@ -794,8 +794,8 @@ export const Analytics: React.FC = () => {
                 <p className="text-xs text-muted-foreground mb-2">Folder Types</p>
                 <div className="flex flex-wrap gap-2">
                   {kbStats.folderTypes.map(ft => (
-                    <Badge key={ft.name} variant="secondary" className="text-xs">
-                      {ft.name}: {ft.value}
+                    <Badge key={String(ft.name)} variant="secondary" className="text-xs">
+                      {String(ft.name)}: {String(ft.value)}
                     </Badge>
                   ))}
                 </div>
@@ -899,7 +899,7 @@ export const Analytics: React.FC = () => {
                         />
                         <span className="text-muted-foreground capitalize">{item.name}</span>
                       </div>
-                      <span className="font-medium">{item.value}</span>
+                      <span className="font-medium">{String(item.value)}</span>
                     </div>
                   ))}
                 </div>
