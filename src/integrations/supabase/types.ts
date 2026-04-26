@@ -433,18 +433,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      match_decision_memory: {
-        Args: {
-          match_count: number
-          match_threshold: number
-          query_embedding: string
-        }
-        Returns: {
-          content: string
-          id: string
-          similarity: number
-        }[]
-      }
+      match_decision_memory:
+        | {
+            Args: {
+              match_count: number
+              match_threshold: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: string
+              similarity: number
+            }[]
+          }
+        | {
+            Args: {
+              match_count: number
+              match_threshold: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: string
+              similarity: number
+            }[]
+          }
     }
     Enums: {
       conflict_type:
