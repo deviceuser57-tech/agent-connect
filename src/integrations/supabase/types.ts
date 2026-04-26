@@ -350,6 +350,47 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          folder_type: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          folder_type?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          folder_type?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_evaluation_logs: {
         Row: {
           accuracy_trend: number | null
