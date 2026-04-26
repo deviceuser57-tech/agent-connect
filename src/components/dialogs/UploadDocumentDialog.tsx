@@ -139,13 +139,16 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
       const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.'));
       const baseName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
       const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'file';
-      const fileName = `${Date.now()}_${sanitizedBaseName}${fileExtension}`;
-      
       setProgress(10);
       setStatusMessage('Uploading file to storage...');
-      
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Please sign in to upload documents');
+
+      const fileName = `${authUser.id}/${Date.now()}_${sanitizedBaseName}${fileExtension}`;
+
       const { error: uploadError } = await supabase.storage
-        .from('kb-assets')
+        .from('documents')
         .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
