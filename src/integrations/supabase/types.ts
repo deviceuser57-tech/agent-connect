@@ -350,6 +350,74 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_type: string | null
+          content: string
+          created_at: string
+          document_context: string | null
+          document_summary: string | null
+          entities: Json | null
+          folder_id: string | null
+          id: string
+          key_concepts: string[] | null
+          metadata: Json | null
+          quality_score: number | null
+          semantic_tags: string[] | null
+          source_file: string
+          token_count: number | null
+          total_chunks: number
+          updated_at: string
+        }
+        Insert: {
+          chunk_index?: number
+          chunk_type?: string | null
+          content: string
+          created_at?: string
+          document_context?: string | null
+          document_summary?: string | null
+          entities?: Json | null
+          folder_id?: string | null
+          id?: string
+          key_concepts?: string[] | null
+          metadata?: Json | null
+          quality_score?: number | null
+          semantic_tags?: string[] | null
+          source_file: string
+          token_count?: number | null
+          total_chunks?: number
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          chunk_type?: string | null
+          content?: string
+          created_at?: string
+          document_context?: string | null
+          document_summary?: string | null
+          entities?: Json | null
+          folder_id?: string | null
+          id?: string
+          key_concepts?: string[] | null
+          metadata?: Json | null
+          quality_score?: number | null
+          semantic_tags?: string[] | null
+          source_file?: string
+          token_count?: number | null
+          total_chunks?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_folders: {
         Row: {
           created_at: string
@@ -450,6 +518,53 @@ export type Database = {
           timestamp?: string
         }
         Relationships: []
+      }
+      rag_knowledge_graph: {
+        Row: {
+          chunk_id: string | null
+          confidence: number | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          relationship: string
+          source_entity: string
+          source_type: string | null
+          target_entity: string
+          target_type: string | null
+        }
+        Insert: {
+          chunk_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          relationship: string
+          source_entity: string
+          source_type?: string | null
+          target_entity: string
+          target_type?: string | null
+        }
+        Update: {
+          chunk_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          relationship?: string
+          source_entity?: string
+          source_type?: string | null
+          target_entity?: string
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rag_knowledge_graph_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_chunks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
