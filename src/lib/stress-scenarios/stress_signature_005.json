@@ -1,0 +1,12 @@
+{
+  "id": "stress_signature_005",
+  "metadata": {
+    "signature": "fake_signature"
+  },
+  "operational_layer": {
+    "topology": "MESH"
+  },
+  "step_sequence": [
+    { "id": "S1", "depends_on": [], "action": "PROCESS" }
+  ]
+}

@@ -1,7 +1,4 @@
-// L1 — Mode Inference Scoring Engine
-// Returns probabilistic scores over {workflow, cognitive, hybrid}
-// + complexity, risk, abstraction, simulation_need
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -9,31 +6,28 @@ const cors = {
 };
 
 const SYSTEM = `You are L1, the Mode Inference layer of a Self-Reforming Cognitive Architecture.
-
-Your job: read the user request and emit STRUCTURED PROBABILISTIC SCORES — never prose.
-
-You score the request across:
-- mode: {workflow, cognitive, hybrid} — sums to 1.0
-- factors: complexity, risk, abstraction, simulation_need (each 0..1)
-- recommended_mode: the highest-scored mode
-- confidence: how certain you are about the recommendation (0..1)
-- reasoning: 1-2 sentence justification
-- hot_path_eligible: true if complexity < 0.35 AND risk < 0.4
-
-Heuristics:
-- "build me a workflow / pipeline / agents to do X" → workflow
-- "predict / forecast / decide / strategize / when to / which / simulate" → cognitive
-- "think about X then execute Y" / "evaluate then act" → hybrid
-- High abstraction + simulation_need → cognitive
-- Multi-step concrete tasks → workflow
+...
 - Decision under uncertainty → cognitive`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "No authorization header" }), { status: 401, headers: cors });
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Missing or invalid authorization header" }), { status: 401, headers: cors });
+    }
+
+    // Create Supabase client and verify JWT
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("Auth failed:", userError?.message);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
     }
 
     const { user_input, dna } = await req.json();

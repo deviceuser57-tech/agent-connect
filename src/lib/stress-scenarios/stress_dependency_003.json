@@ -1,0 +1,14 @@
+{
+  "id": "stress_dependency_003",
+  "operational_layer": {
+    "topology": "MESH"
+  },
+  "step_sequence": [
+    {
+      "id": "S1",
+      "depends_on": ["NON_EXISTENT"],
+      "action": "PROCESS"
+    }
+  ],
+  "constitution_signature": "sha256:mock_signature"
+}

@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Upload, FileText, X, CheckCircle, Loader2, Image, FileAudio, FileVideo, File } from 'lucide-react';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface UploadDocumentDialogProps {
   open: boolean;
@@ -51,6 +52,7 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
   onSuccess,
 }) => {
   const { toast } = useToast();
+  const { currentWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -58,14 +60,18 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
   const [folderId, setFolderId] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: folders } = useQuery({
-    queryKey: ['folders-for-upload'],
+    queryKey: ['folders-for-upload', currentWorkspace?.id],
+    enabled: !!currentWorkspace?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_folders')
         .select('id, name')
+        .eq('workspace_id', currentWorkspace!.id)
         .order('name');
       if (error) throw error;
       return data || [];
@@ -128,6 +134,7 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
     setLoading(true);
     setProgress(5);
     setStatusMessage('Preparing upload...');
+    setError(null);
 
     try {
       const category = getFileCategory(selectedFile.name);
@@ -230,11 +237,14 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
         onOpenChange(false);
       }, 1500);
 
-    } catch (error: unknown) {
-      console.error('Upload error:', error);
+    } catch (err: unknown) {
+      console.error('Upload error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process document';
+      setError(errorMessage);
+      
       toast({ 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to process document', 
+        title: 'Upload Failed', 
+        description: errorMessage, 
         variant: 'destructive' 
       });
     } finally {
@@ -242,9 +252,16 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
     }
   };
 
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+  };
+
   const clearFile = () => {
     setSelectedFile(null);
     setUploadComplete(false);
+    setError(null);
+    setRetryCount(0);
     setProgress(0);
     setStatusMessage('');
     if (fileInputRef.current) {
@@ -317,6 +334,24 @@ export const UploadDocumentDialog: React.FC<UploadDocumentDialogProps> = ({
                 </div>
               )}
             </div>
+            {error && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  <X className="h-4 w-4 mt-0.5" />
+                  <p className="flex-1">{error}</p>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="self-end h-7 text-xs border-destructive/30 hover:bg-destructive/10"
+                  onClick={handleRetry}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Retry Processing
+                </Button>
+              </div>
+            )}
             <input
               ref={fileInputRef}
               type="file"

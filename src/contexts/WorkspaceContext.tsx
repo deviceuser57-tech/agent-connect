@@ -17,6 +17,7 @@ interface WorkspaceContextType {
   setCurrentWorkspace: (workspace: Workspace | null) => void;
   isLoading: boolean;
   createWorkspace: (name: string, description?: string) => Promise<Workspace | null>;
+  updateWorkspace: (id: string, name: string, description?: string) => Promise<Workspace | null>;
   deleteWorkspace: (id: string) => Promise<boolean>;
 }
 
@@ -67,6 +68,33 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     queryClient.invalidateQueries({ queryKey: ['workspaces'] });
     return data as Workspace;
   };
+  
+  const updateWorkspace = async (id: string, name: string, description?: string): Promise<Workspace | null> => {
+    const { data, error } = await supabase
+      .from('workspaces')
+      .update({
+        name,
+        description,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating workspace:', error);
+      return null;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+    
+    // Update current workspace if it's the one being edited
+    if (currentWorkspace?.id === id) {
+      setCurrentWorkspace(data as Workspace);
+    }
+    
+    return data as Workspace;
+  };
 
   const deleteWorkspace = async (id: string): Promise<boolean> => {
     const { error } = await supabase
@@ -95,6 +123,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setCurrentWorkspace,
         isLoading,
         createWorkspace,
+        updateWorkspace,
         deleteWorkspace,
       }}
     >

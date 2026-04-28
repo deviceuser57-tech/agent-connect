@@ -32,6 +32,9 @@ import { DocumentPreviewDialog } from '@/components/knowledge/DocumentPreviewDia
 import { useAuth } from '@/hooks/useAuth';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { WorkspaceDialog } from '@/components/dialogs/WorkspaceDialog';
+import { Settings, Edit2 } from 'lucide-react';
 
 interface FolderNode {
   id: string;
@@ -271,13 +274,20 @@ export const KnowledgeBase: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [folderTypeFilter, setFolderTypeFilter] = useState<string>('all');
   const [previewDoc, setPreviewDoc] = useState<DocumentInfo | null>(null);
+  
+  const { currentWorkspace, workspaces, deleteWorkspace } = useWorkspace();
+  const [workspaceDialogOpen, setWorkspaceDialogOpen] = useState(false);
+  const [editingWorkspace, setEditingWorkspace] = useState<any>(null);
+  const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
 
   const { data: folders, isLoading: foldersLoading } = useQuery({
-    queryKey: ['folders'],
+    queryKey: ['folders', currentWorkspace?.id],
+    enabled: !!currentWorkspace?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_folders')
         .select('*')
+        .eq('workspace_id', currentWorkspace!.id)
         .order('name');
       if (error) throw error;
       return data || [];
@@ -285,12 +295,28 @@ export const KnowledgeBase: React.FC = () => {
   });
 
   const { data: documents, isLoading: documentsLoading } = useQuery({
-    queryKey: ['knowledge_chunks'],
+    queryKey: ['knowledge_chunks', currentWorkspace?.id],
+    enabled: !!currentWorkspace?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: workspaceFolders } = await supabase
+        .from('knowledge_folders')
+        .select('id')
+        .eq('workspace_id', currentWorkspace!.id);
+      
+      const folderIds = workspaceFolders?.map(f => f.id) || [];
+      
+      let query = supabase
         .from('knowledge_chunks')
         .select('id, source_file, folder_id, created_at')
         .order('created_at', { ascending: false });
+
+      if (folderIds.length > 0) {
+        query = query.in('folder_id', folderIds);
+      } else {
+        return [];
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
@@ -410,7 +436,68 @@ export const KnowledgeBase: React.FC = () => {
             {totalMatchingDocs} result{totalMatchingDocs !== 1 ? 's' : ''}
           </Badge>
         )}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="ml-auto gap-2"
+          onClick={() => setShowWorkspaceManager(!showWorkspaceManager)}
+        >
+          <Settings className="h-4 w-4" />
+          Manage Workspaces
+        </Button>
       </div>
+
+      {showWorkspaceManager && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FolderTree className="h-5 w-5" />
+                Workspace Management
+              </CardTitle>
+              <Button size="sm" onClick={() => {
+                setEditingWorkspace(null);
+                setWorkspaceDialogOpen(true);
+              }}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Workspace
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {workspaces.map((ws) => (
+                <div key={ws.id} className="p-4 rounded-xl border bg-card flex flex-col gap-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-semibold text-sm">{ws.name}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{ws.description || 'No description'}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+                        setEditingWorkspace(ws);
+                        setWorkspaceDialogOpen(true);
+                      }}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteWorkspace(ws.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-auto pt-2 flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">Created {format(new Date(ws.created_at), 'MMM d, yyyy')}</span>
+                    {currentWorkspace?.id === ws.id && (
+                      <Badge variant="default" className="text-[10px] h-4">Active</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -468,6 +555,12 @@ export const KnowledgeBase: React.FC = () => {
         onOpenChange={(open) => !open && setPreviewDoc(null)}
         sourceFile={previewDoc?.source_file || ''}
         folderId={previewDoc?.folder_id}
+      />
+
+      <WorkspaceDialog
+        open={workspaceDialogOpen}
+        onOpenChange={setWorkspaceDialogOpen}
+        workspace={editingWorkspace}
       />
     </div>
   );

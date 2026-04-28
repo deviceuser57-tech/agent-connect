@@ -1,0 +1,17 @@
+{
+  "id": "stress_risk_002",
+  "operational_layer": {
+    "topology": "HIERARCHICAL"
+  },
+  "step_sequence": [
+    {
+      "id": "S1",
+      "depends_on": [],
+      "action": "CRITICAL_WRITE",
+      "metadata": {
+        "projectedRisk": 0.95
+      }
+    }
+  ],
+  "constitution_signature": "sha256:mock_signature"
+}

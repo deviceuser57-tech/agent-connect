@@ -1,0 +1,12 @@
+{
+  "id": "stress_cycle_001",
+  "operational_layer": {
+    "topology": "MESH"
+  },
+  "step_sequence": [
+    { "id": "A", "depends_on": ["C"], "action": "PROCESS" },
+    { "id": "B", "depends_on": ["A"], "action": "PROCESS" },
+    { "id": "C", "depends_on": ["B"], "action": "PROCESS" }
+  ],
+  "constitution_signature": "sha256:mock_signature"
+}

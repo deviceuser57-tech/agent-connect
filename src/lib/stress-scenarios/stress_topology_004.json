@@ -1,0 +1,10 @@
+{
+  "id": "stress_topology_004",
+  "operational_layer": {
+    "topology": "INVALID_MODE"
+  },
+  "step_sequence": [
+    { "id": "S1", "depends_on": [], "action": "PROCESS" }
+  ],
+  "constitution_signature": "sha256:mock_signature"
+}

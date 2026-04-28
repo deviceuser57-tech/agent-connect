@@ -11,25 +11,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useWorkspace, Workspace } from '@/contexts/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface WorkspaceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  workspace?: Workspace | null;
 }
 
 export const WorkspaceDialog: React.FC<WorkspaceDialogProps> = ({
   open,
   onOpenChange,
+  workspace,
 }) => {
-  const { createWorkspace } = useWorkspace();
+  const { createWorkspace, updateWorkspace } = useWorkspace();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
+    name: workspace?.name || '',
+    description: workspace?.description || '',
   });
+
+  React.useEffect(() => {
+    if (workspace) {
+      setFormData({
+        name: workspace.name,
+        description: workspace.description || '',
+      });
+    } else {
+      setFormData({ name: '', description: '' });
+    }
+  }, [workspace, open]);
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
@@ -42,20 +55,25 @@ export const WorkspaceDialog: React.FC<WorkspaceDialogProps> = ({
     }
 
     setLoading(true);
-    const workspace = await createWorkspace(formData.name, formData.description);
+    let result;
+    if (workspace) {
+      result = await updateWorkspace(workspace.id, formData.name, formData.description);
+    } else {
+      result = await createWorkspace(formData.name, formData.description);
+    }
     setLoading(false);
 
-    if (workspace) {
+    if (result) {
       toast({
         title: 'Success',
-        description: 'Workspace created successfully',
+        description: `Workspace ${workspace ? 'updated' : 'created'} successfully`,
       });
-      setFormData({ name: '', description: '' });
+      if (!workspace) setFormData({ name: '', description: '' });
       onOpenChange(false);
     } else {
       toast({
         title: 'Error',
-        description: 'Failed to create workspace',
+        description: `Failed to ${workspace ? 'update' : 'create'} workspace`,
         variant: 'destructive',
       });
     }
@@ -65,9 +83,11 @@ export const WorkspaceDialog: React.FC<WorkspaceDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create Workspace</DialogTitle>
+          <DialogTitle>{workspace ? 'Edit' : 'Create'} Workspace</DialogTitle>
           <DialogDescription>
-            Create a new workspace to organize your agents and workflows.
+            {workspace 
+              ? 'Update your workspace details.' 
+              : 'Create a new workspace to organize your agents and workflows.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -95,7 +115,7 @@ export const WorkspaceDialog: React.FC<WorkspaceDialogProps> = ({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Creating...' : 'Create'}
+            {loading ? (workspace ? 'Updating...' : 'Creating...') : (workspace ? 'Update' : 'Create')}
           </Button>
         </DialogFooter>
       </DialogContent>

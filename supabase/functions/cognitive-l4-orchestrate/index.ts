@@ -1,7 +1,4 @@
-// L4 — Cyclic Orchestration Engine
-// Runs Think → Simulate → Evaluate → Adjust loop (max N cycles)
-// Inline L5 (fidelity) + L6 (self-correction)
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -9,34 +6,35 @@ const cors = {
 };
 
 const SYSTEM = `You are L4, the Cyclic Orchestration Engine of a Self-Reforming Cognitive Architecture.
-
-You execute ONE cycle of: Think → Simulate → Evaluate → Adjust.
-
-You receive:
-- user_intent: what the user wants
-- decision_contract: signed mode + refinements
-- memory_recall: similar past decisions (may be empty)
-- prior_cycles: outputs from previous cycles (with fidelity scores) — use to refine
-- dna: governing identity, philosophy, value_system, reasoning_constraints
-
-Emit STRUCTURED output via tool call. Every field is required.
-
-Cycle objectives:
-- think: 2-4 sentences of reasoning about the request given context
-- simulate: 2-3 plausible outcome branches if this reasoning were executed
-- evaluate: list 1-3 weaknesses/risks in your own simulation
-- adjust: what you would change next cycle (or "converged" if no changes needed)
-- proposed_spec: a CONCISE structured plan (agents/decision-points/data-flow) — high-level only
-- self_assessment: your own confidence/divergence/stability scores 0..1
-
+...
 If prior_cycles exist, you MUST address their evaluate.weaknesses in your think/adjust.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "No authorization header" }), { status: 401, headers: cors });
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Missing or invalid authorization header" }), { status: 401, headers: cors });
+    }
+
+    // Create Supabase client and verify JWT
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("Auth failed:", userError?.message);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
+    }
+
+    // 2. CMACK Cognitive Consistency Gate (AC-009.6)
+    const { validateCmackGate } = await import("../_shared/cmack-gate.ts");
+    const gate = await validateCmackGate(req, supabase);
+    if (!gate.allowed) {
+      return new Response(JSON.stringify({ error: gate.error }), { status: gate.status, headers: cors });
     }
 
     const { user_intent, decision_contract, memory_recall, prior_cycles, dna } = await req.json();

@@ -30,6 +30,7 @@ import { WorkflowBuilder } from "@/pages/WorkflowBuilder";
 import { WorkflowEditor } from "@/pages/WorkflowEditor";
 import { WorkflowCanvas } from "@/pages/WorkflowCanvas";
 import CloudOverview from "@/pages/CloudOverview";
+import GovernanceDashboard from "@/pages/GovernanceDashboard";
 import { AIAssistant } from "@/components/assistant/AIAssistant";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "./pages/NotFound";
@@ -112,6 +113,7 @@ function AnimatedRoutes() {
                       <Route path="/knowledge-base" element={<AnimatedPage><KnowledgeBase /></AnimatedPage>} />
                       <Route path="/analytics" element={<AnimatedPage><Analytics /></AnimatedPage>} />
                       <Route path="/settings" element={<AnimatedPage><Settings /></AnimatedPage>} />
+                      <Route path="/governance-dashboard" element={<AnimatedPage><GovernanceDashboard /></AnimatedPage>} />
                       <Route path="/ai-chat" element={<AnimatedPage><AIChat /></AnimatedPage>} />
                       <Route path="/workflow-runs" element={<AnimatedPage><WorkflowRuns /></AnimatedPage>} />
                       <Route path="/workflow-monitor/:runId" element={<AnimatedPage><WorkflowMonitor /></AnimatedPage>} />
