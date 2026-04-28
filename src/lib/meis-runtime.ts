@@ -224,7 +224,7 @@ export class ExecutionOrchestrator {
   }
 
   private calculateCurrentStability(): LoopControlState {
-    const runtimeState = this.stateManager.getState();
+    let runtimeState = this.stateManager.getState();
     
     // 🎯 AC-009.7: Intent Drift Detection
     this.drift.intent = IntentDriftDetector.detect(runtimeState);
@@ -240,7 +240,7 @@ export class ExecutionOrchestrator {
     
     // Update phase before calculating stability for context consistency
     this.stateManager.updatePhase(this.currentPhase);
-    const runtimeState = this.stateManager.getState();
+    runtimeState = this.stateManager.getState();
 
     return {
       cycle_state: runtimeState.systemStatus === 'EXECUTING' ? 'ACTIVE' : 'IDLE' as any,
