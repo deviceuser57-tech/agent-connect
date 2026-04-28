@@ -14,16 +14,645 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      conflict_logs: {
+        Row: {
+          dna_preference: Json | null
+          final_arbitration: Json | null
+          governance_decision: Json | null
+          id: string
+          outcome_score: number | null
+          session_id: string
+          severity: number
+          timestamp: string
+          type: Database["public"]["Enums"]["conflict_type"]
+        }
+        Insert: {
+          dna_preference?: Json | null
+          final_arbitration?: Json | null
+          governance_decision?: Json | null
+          id?: string
+          outcome_score?: number | null
+          session_id: string
+          severity: number
+          timestamp?: string
+          type: Database["public"]["Enums"]["conflict_type"]
+        }
+        Update: {
+          dna_preference?: Json | null
+          final_arbitration?: Json | null
+          governance_decision?: Json | null
+          id?: string
+          outcome_score?: number | null
+          session_id?: string
+          severity?: number
+          timestamp?: string
+          type?: Database["public"]["Enums"]["conflict_type"]
+        }
+        Relationships: []
+      }
+      constitutional_snapshots: {
+        Row: {
+          id: string
+          performance_evaluation: Json | null
+          rule_set_snapshot: Json
+          session_id: string
+          stability_valid: boolean | null
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          performance_evaluation?: Json | null
+          rule_set_snapshot: Json
+          session_id: string
+          stability_valid?: boolean | null
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          performance_evaluation?: Json | null
+          rule_set_snapshot?: Json
+          session_id?: string
+          stability_valid?: boolean | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      execution_traces: {
+        Row: {
+          actual_weight: number | null
+          bias: number | null
+          created_at: string
+          deviation: number | null
+          id: string
+          predicted_risk: number | null
+          recovery_cost: number | null
+          session_id: string
+          trace_data: Json
+        }
+        Insert: {
+          actual_weight?: number | null
+          bias?: number | null
+          created_at?: string
+          deviation?: number | null
+          id?: string
+          predicted_risk?: number | null
+          recovery_cost?: number | null
+          session_id: string
+          trace_data: Json
+        }
+        Update: {
+          actual_weight?: number | null
+          bias?: number | null
+          created_at?: string
+          deviation?: number | null
+          id?: string
+          predicted_risk?: number | null
+          recovery_cost?: number | null
+          session_id?: string
+          trace_data?: Json
+        }
+        Relationships: []
+      }
+      governance_accuracy_log: {
+        Row: {
+          accuracy_score: number | null
+          deviation: number | null
+          id: string
+          session_id: string
+          signal_type: string | null
+          timestamp: string
+        }
+        Insert: {
+          accuracy_score?: number | null
+          deviation?: number | null
+          id?: string
+          session_id: string
+          signal_type?: string | null
+          timestamp?: string
+        }
+        Update: {
+          accuracy_score?: number | null
+          deviation?: number | null
+          id?: string
+          session_id?: string
+          signal_type?: string | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      governance_causality_graph: {
+        Row: {
+          decision_pressure: number | null
+          id: string
+          influence_weight: number | null
+          session_id: string
+          source_node: string
+          target_node: string
+          timestamp: string
+        }
+        Insert: {
+          decision_pressure?: number | null
+          id?: string
+          influence_weight?: number | null
+          session_id: string
+          source_node: string
+          target_node: string
+          timestamp?: string
+        }
+        Update: {
+          decision_pressure?: number | null
+          id?: string
+          influence_weight?: number | null
+          session_id?: string
+          source_node?: string
+          target_node?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      governance_queue: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json | null
+          proposed_action: string
+          proposer_id: string | null
+          proposer_role: string
+          session_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          proposed_action: string
+          proposer_id?: string | null
+          proposer_role: string
+          session_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          proposed_action?: string
+          proposer_id?: string | null
+          proposer_role?: string
+          session_id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      governance_reflections: {
+        Row: {
+          decision_id: string | null
+          id: string
+          reflection_data: Json
+          self_bias_score: number | null
+          session_id: string
+          success_alignment: number | null
+          timestamp: string
+        }
+        Insert: {
+          decision_id?: string | null
+          id?: string
+          reflection_data: Json
+          self_bias_score?: number | null
+          session_id: string
+          success_alignment?: number | null
+          timestamp?: string
+        }
+        Update: {
+          decision_id?: string | null
+          id?: string
+          reflection_data?: Json
+          self_bias_score?: number | null
+          session_id?: string
+          success_alignment?: number | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      governance_rules: {
+        Row: {
+          action: string
+          condition_type: string
+          condition_value: Json | null
+          confidence_score: number | null
+          created_at: string
+          effectiveness_score: number | null
+          id: string
+          is_active: boolean | null
+          origin_trace_id: string | null
+          priority: number | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          condition_type: string
+          condition_value?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          effectiveness_score?: number | null
+          id?: string
+          is_active?: boolean | null
+          origin_trace_id?: string | null
+          priority?: number | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          condition_type?: string
+          condition_value?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          effectiveness_score?: number | null
+          id?: string
+          is_active?: boolean | null
+          origin_trace_id?: string | null
+          priority?: number | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      governance_state: {
+        Row: {
+          adaptability_factor: number | null
+          approval_threshold_adj: number | null
+          current_mode: string | null
+          id: string
+          intelligence_accuracy: number | null
+          last_updated: string | null
+          safety_factor: number | null
+          session_id: string
+        }
+        Insert: {
+          adaptability_factor?: number | null
+          approval_threshold_adj?: number | null
+          current_mode?: string | null
+          id?: string
+          intelligence_accuracy?: number | null
+          last_updated?: string | null
+          safety_factor?: number | null
+          session_id: string
+        }
+        Update: {
+          adaptability_factor?: number | null
+          approval_threshold_adj?: number | null
+          current_mode?: string | null
+          id?: string
+          intelligence_accuracy?: number | null
+          last_updated?: string | null
+          safety_factor?: number | null
+          session_id?: string
+        }
+        Relationships: []
+      }
+      governance_traces: {
+        Row: {
+          action: string
+          execution_signature: string | null
+          id: string
+          is_approved: boolean | null
+          is_blocked: boolean | null
+          reason: string | null
+          session_id: string
+          shadow_detected: boolean | null
+          timestamp: string
+          user_role: string
+        }
+        Insert: {
+          action: string
+          execution_signature?: string | null
+          id?: string
+          is_approved?: boolean | null
+          is_blocked?: boolean | null
+          reason?: string | null
+          session_id: string
+          shadow_detected?: boolean | null
+          timestamp?: string
+          user_role: string
+        }
+        Update: {
+          action?: string
+          execution_signature?: string | null
+          id?: string
+          is_approved?: boolean | null
+          is_blocked?: boolean | null
+          reason?: string | null
+          session_id?: string
+          shadow_detected?: boolean | null
+          timestamp?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_type: string | null
+          content: string
+          created_at: string
+          document_context: string | null
+          document_summary: string | null
+          entities: Json | null
+          folder_id: string | null
+          id: string
+          key_concepts: string[] | null
+          metadata: Json | null
+          quality_score: number | null
+          semantic_tags: string[] | null
+          source_file: string
+          token_count: number | null
+          total_chunks: number
+          updated_at: string
+        }
+        Insert: {
+          chunk_index?: number
+          chunk_type?: string | null
+          content: string
+          created_at?: string
+          document_context?: string | null
+          document_summary?: string | null
+          entities?: Json | null
+          folder_id?: string | null
+          id?: string
+          key_concepts?: string[] | null
+          metadata?: Json | null
+          quality_score?: number | null
+          semantic_tags?: string[] | null
+          source_file: string
+          token_count?: number | null
+          total_chunks?: number
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          chunk_type?: string | null
+          content?: string
+          created_at?: string
+          document_context?: string | null
+          document_summary?: string | null
+          entities?: Json | null
+          folder_id?: string | null
+          id?: string
+          key_concepts?: string[] | null
+          metadata?: Json | null
+          quality_score?: number | null
+          semantic_tags?: string[] | null
+          source_file?: string
+          token_count?: number | null
+          total_chunks?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          folder_type: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          folder_type?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          folder_type?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_evaluation_logs: {
+        Row: {
+          accuracy_trend: number | null
+          adjustment_actions: string[] | null
+          effectiveness_trend: number | null
+          id: string
+          session_id: string
+          stability_index: number | null
+          timestamp: string
+        }
+        Insert: {
+          accuracy_trend?: number | null
+          adjustment_actions?: string[] | null
+          effectiveness_trend?: number | null
+          id?: string
+          session_id: string
+          stability_index?: number | null
+          timestamp?: string
+        }
+        Update: {
+          accuracy_trend?: number | null
+          adjustment_actions?: string[] | null
+          effectiveness_trend?: number | null
+          id?: string
+          session_id?: string
+          stability_index?: number | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      policy_evolution_logs: {
+        Row: {
+          delta_data: Json | null
+          evolution_score: number | null
+          evolution_type: string
+          id: string
+          rule_id: string | null
+          session_id: string
+          timestamp: string
+        }
+        Insert: {
+          delta_data?: Json | null
+          evolution_score?: number | null
+          evolution_type: string
+          id?: string
+          rule_id?: string | null
+          session_id: string
+          timestamp?: string
+        }
+        Update: {
+          delta_data?: Json | null
+          evolution_score?: number | null
+          evolution_type?: string
+          id?: string
+          rule_id?: string | null
+          session_id?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      rag_knowledge_graph: {
+        Row: {
+          chunk_id: string | null
+          confidence: number | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          relationship: string
+          source_entity: string
+          source_type: string | null
+          target_entity: string
+          target_type: string | null
+        }
+        Insert: {
+          chunk_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          relationship: string
+          source_entity: string
+          source_type?: string | null
+          target_entity: string
+          target_type?: string | null
+        }
+        Update: {
+          chunk_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          relationship?: string
+          source_entity?: string
+          source_type?: string | null
+          target_entity?: string
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rag_knowledge_graph_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_chunks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_decision_memory:
+        | {
+            Args: {
+              match_count: number
+              match_threshold: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: string
+              similarity: number
+            }[]
+          }
+        | {
+            Args: {
+              match_count: number
+              match_threshold: number
+              query_embedding: string
+            }
+            Returns: {
+              content: string
+              id: string
+              similarity: number
+            }[]
+          }
     }
     Enums: {
-      [_ in never]: never
+      conflict_type:
+        | "RISK_CONFLICT"
+        | "ACTION_CONFLICT"
+        | "PATH_CONFLICT"
+        | "EXPLORATION_CONFLICT"
+      governance_mode:
+        | "STRICT_MODE"
+        | "BALANCED_MODE"
+        | "PERMISSIVE_MODE"
+        | "INVESTIGATIVE_MODE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +779,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      conflict_type: [
+        "RISK_CONFLICT",
+        "ACTION_CONFLICT",
+        "PATH_CONFLICT",
+        "EXPLORATION_CONFLICT",
+      ],
+      governance_mode: [
+        "STRICT_MODE",
+        "BALANCED_MODE",
+        "PERMISSIVE_MODE",
+        "INVESTIGATIVE_MODE",
+      ],
+    },
   },
 } as const
