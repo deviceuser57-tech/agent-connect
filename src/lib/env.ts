@@ -32,7 +32,7 @@ export const getSupabaseUrl = (): string | undefined => {
     return `https://${env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
   }
   // Fallback to the project's default Supabase URL
-  return "https://mypfeihhophbtulgbonp.supabase.co";
+  return "https://hexofmnsxxwkriznwmfq.supabase.co";
 };
 
 export const getSupabasePublishableKey = (): string | undefined => {
