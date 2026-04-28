@@ -1,0 +1,42 @@
+﻿
+> vite_react_shadcn_ts@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 1140 modules transformed.
+node.exe : [31mx[39m Build failed in 7.83s
+At line:1 char:1
++ & "D:\Program Files\nodejs/node.exe" "C:\Users\ango\AppData\Roaming\n ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31mx[39m Build failed in 7.83s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[31merror during build:
+[31m[vite:esbuild] Transform failed with 1 error:
+D:/Agents-Connect-Workflow/agent-connect/src/lib/meis-runtime.ts:243:10: ERROR: The symbol "runtimeState" has already 
+been declared[31m
+file: [36mD:/Agents-Connect-Workflow/agent-connect/src/lib/meis-runtime.ts:243:10[31m
+[33m
+[33mThe symbol "runtimeState" has already been declared[33m
+241|      // Update phase before calculating stability for context consistency
+242|      this.stateManager.updatePhase(this.currentPhase);
+243|      const runtimeState = this.stateManager.getState();
+   |            ^
+244|  
+245|      return {
+[31m
+    at failureErrorWithLog 
+(D:\Agents-Connect-Workflow\agent-connect\node_modules\vite\node_modules\esbuild\lib\main.js:1472:15)
+    at D:\Agents-Connect-Workflow\agent-connect\node_modules\vite\node_modules\esbuild\lib\main.js:755:50
+    at responseCallbacks.<computed> 
+(D:\Agents-Connect-Workflow\agent-connect\node_modules\vite\node_modules\esbuild\lib\main.js:622:9)
+    at handleIncomingPacket 
+(D:\Agents-Connect-Workflow\agent-connect\node_modules\vite\node_modules\esbuild\lib\main.js:677:12)
+    at Socket.readFromStdout 
+(D:\Agents-Connect-Workflow\agent-connect\node_modules\vite\node_modules\esbuild\lib\main.js:600:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)[39m
