@@ -302,8 +302,8 @@ export const WorkflowBuilder: React.FC = () => {
   const navigate = useNavigate();
 
   const getFunctionErrorMessage = (status: number, fallback: string) => {
-    if (status === 401) return 'Please sign in to use the workflow builder.';
-    if (status === 403) return 'You do not have permission to access this resource.';
+    if (status === 401) return 'Authentication error (401). Your session might be expired or there is a project mismatch. Please check your .env VITE_SUPABASE_URL and VITE_SUPABASE_PROJECT_ID, and try signing out and signing back in.';
+    if (status === 403) return 'Permission denied (403). Ensure your user has the correct roles and permissions in this Supabase project.';
     if (status >= 500) return 'The server encountered an error. Please try again soon.';
     return fallback;
   };
@@ -338,15 +338,21 @@ export const WorkflowBuilder: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast({
           title: 'Authentication Required',
-          description: 'Please sign in to use the workflow builder',
+          description: 'Please sign in to use the workflow builder. Check your .env config if you believe you are signed in.',
           variant: 'destructive',
         });
         setIsLoading(false);
         return;
+      }
+
+      // Explicitly refresh session to avoid edge function 401s
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError && refreshData.session) {
+        session = refreshData.session;
       }
 
       const response = await fetch(

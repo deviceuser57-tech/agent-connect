@@ -25,14 +25,13 @@ export const getRuntimeEnv = (): RuntimeEnv => {
   };
 };
 
-export const getSupabaseUrl = (): string | undefined => {
+export const getSupabaseUrl = (): string => {
   const env = getRuntimeEnv();
   if (env.VITE_SUPABASE_URL) return env.VITE_SUPABASE_URL;
   if (env.VITE_SUPABASE_PROJECT_ID) {
     return `https://${env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
   }
-  // Fallback to the project's default Supabase URL
-  return "https://hexofmnsxxwkriznwmfq.supabase.co";
+  throw new Error('Missing Supabase configuration: VITE_SUPABASE_URL or VITE_SUPABASE_PROJECT_ID must be set.');
 };
 
 export const getSupabasePublishableKey = (): string | undefined => {

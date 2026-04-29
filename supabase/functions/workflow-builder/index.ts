@@ -479,6 +479,27 @@ serve(async (req) => {
       );
     }
 
+    try {
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payloadStr = atob(payloadB64);
+        const payload = JSON.parse(payloadStr);
+        console.log(JSON.stringify({
+            event: "auth_jwt_decoded",
+            aud: payload.aud,
+            iss: payload.iss,
+            sub: payload.sub,
+            message: "Incoming JWT decoded for project matching verification"
+        }));
+      } else {
+        console.warn("Incoming JWT is malformed, does not have 3 parts.");
+      }
+    } catch (e) {
+      console.warn("Failed to decode JWT for structured logging", e);
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
