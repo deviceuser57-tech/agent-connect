@@ -471,36 +471,76 @@ serve(async (req) => {
   }
 
   try {
+    const requestId = req.headers.get("x-request-id") || crypto.randomUUID();
+    const timestamp = Date.now();
+    let authHeaderPresent = false;
+    let aud: string | undefined;
+    let iss: string | undefined;
+    let sub: string | undefined;
+
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (authHeader) {
+      authHeaderPresent = true;
+      try {
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payloadStr = atob(payloadB64);
+          const payload = JSON.parse(payloadStr);
+          aud = payload.aud;
+          iss = payload.iss;
+          sub = payload.sub;
+        }
+      } catch (e) {
+        console.warn("Failed to decode JWT for structured logging", e);
+      }
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const normalizeUrl = (v: string) => v.toLowerCase().replace(/\/$/, "");
+    
+    // 🔴 AC-009 Core: Deterministic PROJECT_MISMATCH check
+    const expectedIss = `${normalizeUrl(supabaseUrl)}/auth/v1`;
+    if (authHeaderPresent && iss && (normalizeUrl(iss) !== expectedIss || aud !== 'authenticated')) {
+      console.warn(JSON.stringify({
+        event: "PROJECT_MISMATCH",
+        expected_iss: expectedIss,
+        actual_iss: iss,
+        aud
+      }));
+      return new Response(
+        JSON.stringify({ error: "PROJECT_MISMATCH", message: "Token issued by different project or invalid audience" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const bodyText = await req.text().catch(() => "");
+    
+    // 🔥 AC-009 Core: Causal Logging & Trace Hash Calculation
+    const encoder = new TextEncoder();
+    const hashData = encoder.encode(bodyText + (aud || "") + (iss || "") + timestamp);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', hashData);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const traceHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    console.log(JSON.stringify({
+      request_id: requestId,
+      timestamp,
+      auth_header_present: authHeaderPresent,
+      aud,
+      iss,
+      sub,
+      trace_hash: traceHash
+    }));
+
+    if (!authHeaderPresent) {
       return new Response(
         JSON.stringify({ error: "Missing authorization" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    try {
-      const token = authHeader.replace(/^Bearer\s+/i, '');
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const payloadStr = atob(payloadB64);
-        const payload = JSON.parse(payloadStr);
-        console.log(JSON.stringify({
-            event: "auth_jwt_decoded",
-            aud: payload.aud,
-            iss: payload.iss,
-            sub: payload.sub,
-            message: "Incoming JWT decoded for project matching verification"
-        }));
-      } else {
-        console.warn("Incoming JWT is malformed, does not have 3 parts.");
-      }
-    } catch (e) {
-      console.warn("Failed to decode JWT for structured logging", e);
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
@@ -516,7 +556,7 @@ serve(async (req) => {
 
     let body: unknown;
     try {
-      body = await req.json();
+      body = JSON.parse(bodyText);
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body" }),

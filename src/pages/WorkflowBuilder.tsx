@@ -301,13 +301,6 @@ export const WorkflowBuilder: React.FC = () => {
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
 
-  const getFunctionErrorMessage = (status: number, fallback: string) => {
-    if (status === 401) return 'Authentication error (401). Your session might be expired or there is a project mismatch. Please check your .env VITE_SUPABASE_URL and VITE_SUPABASE_PROJECT_ID, and try signing out and signing back in.';
-    if (status === 403) return 'Permission denied (403). Ensure your user has the correct roles and permissions in this Supabase project.';
-    if (status >= 500) return 'The server encountered an error. Please try again soon.';
-    return fallback;
-  };
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -340,38 +333,79 @@ export const WorkflowBuilder: React.FC = () => {
     try {
       let { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast({
-          title: 'Authentication Required',
-          description: 'Please sign in to use the workflow builder. Check your .env config if you believe you are signed in.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
+        throw {
+          code: 'AUTH_SESSION_INVALID',
+          message: 'Authentication Required',
+          probable_cause: 'No active session found',
+          recovery_step: 'Please sign in to use the workflow builder'
+        };
       }
 
-      // Explicitly refresh session to avoid edge function 401s
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError && refreshData.session) {
-        session = refreshData.session;
-      }
+      let response: Response | null = null;
+      let retryCount = 0;
+      const MAX_RETRIES = 1;
 
-      const response = await fetch(
-        `${getSupabaseUrl()}/functions/v1/workflow-builder`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ messages: newMessages, system_mode: systemMode }),
+      while (retryCount <= MAX_RETRIES) {
+        response = await fetch(
+          `${getSupabaseUrl()}/functions/v1/workflow-builder`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ messages: newMessages, system_mode: systemMode }),
+          }
+        );
+
+        if (response.status === 401 || response.status === 403) {
+           let errData: any = {};
+           try {
+             errData = await response.clone().json();
+           } catch { /* ignore */ }
+
+           if (errData.error === 'PROJECT_MISMATCH' || response.status === 403) {
+             throw {
+               code: 'PROJECT_MISMATCH',
+               message: 'Project boundary violation detected',
+               probable_cause: errData.message || 'Token issued by different project or invalid audience',
+               recovery_step: 'Check VITE_SUPABASE_URL and project environment variables'
+             };
+           }
+
+           if (retryCount < MAX_RETRIES) {
+             retryCount++;
+             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+             if (refreshError || !refreshData.session) {
+               throw {
+                 code: 'AUTH_SESSION_INVALID',
+                 message: 'Authentication session expired',
+                 probable_cause: 'Token expired and could not be refreshed',
+                 recovery_step: 'Please sign out and sign back in'
+               };
+             }
+             session = refreshData.session;
+             continue; // Retry request
+           } else {
+             throw {
+               code: 'AUTH_SESSION_INVALID',
+               message: 'Authentication failed after retry',
+               probable_cause: 'Session validation failed continuously',
+               recovery_step: 'Please sign out and sign back in'
+             };
+           }
         }
-      );
 
-      if (!response.ok) {
-        if (response.status === 429) throw new Error('Rate limit exceeded. Please try again later.');
-        if (response.status === 402) throw new Error('Usage limit reached. Please add credits.');
-        throw new Error(getFunctionErrorMessage(response.status, 'Failed to get response'));
+        if (!response.ok) {
+          if (response.status === 429) throw { code: 'SERVER_FAILURE', message: 'Rate limit exceeded', probable_cause: 'Too many requests', recovery_step: 'Try again later' };
+          if (response.status === 402) throw { code: 'SERVER_FAILURE', message: 'Usage limit reached', probable_cause: 'Quota exceeded', recovery_step: 'Add credits' };
+          throw { code: 'SERVER_FAILURE', message: `Server error: ${response.status}`, probable_cause: 'Upstream edge function failure', recovery_step: 'Check server logs' };
+        }
+        
+        break; // Success!
       }
+
+      if (!response) throw new Error("Request failed completely");
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
@@ -433,13 +467,27 @@ export const WorkflowBuilder: React.FC = () => {
         };
         setGeneratedWorkflow(safeWorkflow);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Stream error:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to process your request',
-        variant: 'destructive',
-      });
+      if (error.code && error.recovery_step) {
+         toast({
+           title: `${error.code}`,
+           description: (
+             <div className="flex flex-col gap-1 mt-1">
+               <span className="font-semibold">{error.message}</span>
+               <span className="text-xs opacity-90">Cause: {error.probable_cause}</span>
+               <span className="text-xs bg-destructive/20 p-1 rounded mt-1">Recovery: {error.recovery_step}</span>
+             </div>
+           ),
+           variant: 'destructive',
+         });
+      } else {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to process your request',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
