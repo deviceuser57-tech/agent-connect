@@ -137,6 +137,15 @@ export class KernelSecurity {
     return this.hashString(`${hash}:${this.KERNEL_SECRET}`);
   }
 
+  // TTAL Cryptographic Utilities
+  static hashDriftData(data: string): string {
+    return this.hashString(data);
+  }
+
+  static signDriftData(hash: string): string {
+    return this.hashString(`${hash}:${this.KERNEL_SECRET}:TTAL_V1`);
+  }
+
   static generateTraceRef(execution_seed: string, previous_chain_hash: string, nonce: string): string {
     const payload = `${execution_seed}:${previous_chain_hash}:${nonce}:${this.KERNEL_SECRET}`;
     const signature = this.hashString(payload);

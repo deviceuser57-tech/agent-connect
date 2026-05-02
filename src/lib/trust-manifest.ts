@@ -61,7 +61,22 @@ export const TRUST_ASSUMPTIONS: TrustAssumption[] = [
   }
 ];
 
+export type ObservabilityStatus = 'FULL' | 'PARTIAL' | 'ASSUMED_TRUST' | 'UNOBSERVABLE';
+
+export const MONITORING_LIMITS: Record<string, ObservabilityStatus> = {
+  hardware: 'UNOBSERVABLE',
+  hypervisor: 'UNOBSERVABLE',
+  entropy_source: 'PARTIAL',
+  external_validators: 'ASSUMED_TRUST',
+  kernel_execution: 'FULL',
+  database_persistence: 'FULL'
+};
+
 export class TrustManifest {
+  static get monitoring_limits() {
+    return MONITORING_LIMITS;
+  }
+
   /**
    * Returns the machine-readable Boundary Manifest of the system.
    */
@@ -72,7 +87,8 @@ export class TrustManifest {
       epistemological_bounds: {
         provable_closure: false, // Explicit declaration
         trust_model: 'BOUNDED_EXTERNAL_ANCHORS',
-        residual_risk: 'RESIDENT_IN_HARDWARE_AND_HOST_LAYERS'
+        residual_risk: 'RESIDENT_IN_HARDWARE_AND_HOST_LAYERS',
+        monitoring_limits: MONITORING_LIMITS
       },
       unprovable_claims: [
         'Absolute protection against hardware-level side-channels',

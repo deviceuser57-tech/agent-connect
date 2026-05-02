@@ -103,3 +103,50 @@ export class DynamicSwitchingController {
     return currentTopology;
   }
 }
+
+/**
+ * AC-009.9: Recovery Isolator (TDTL HARD CLOSURE)
+ * Evaluates whether a QUARANTINED node can be isolated to a subgraph or requires global quarantine.
+ */
+export class RecoveryIsolator {
+  static isCausallyIsolated(
+    nodeId: string, 
+    steps: any[], 
+    runtimeState: RuntimeState
+  ): boolean {
+    const node = steps.find(s => s.id === nodeId);
+    if (!node) return false;
+
+    // Check 1: Shared execution_seed contamination
+    // If the node operates on global state using the global execution seed, it might contaminate.
+    // For now, we assume if it writes to globalState, it's not isolated.
+    // (This requires inspecting the step metadata, simplified here)
+    if (node.metadata?.mutatesGlobalState) return false;
+
+    // Check 2: Shared validator dependency
+    if (node.metadata?.sharedValidatorBound) return false;
+
+    // Check 3: Upstream/Downstream impact threshold
+    // If it has more than 3 direct downstream dependents, it's too embedded to isolate safely.
+    const dependents = steps.filter(s => (s.depends_on || []).includes(nodeId));
+    if (dependents.length > 3) return false;
+
+    return true;
+  }
+
+  static getDownstreamSubgraph(nodeId: string, steps: any[]): Set<string> {
+    const subgraph = new Set<string>();
+    const queue = [nodeId];
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      subgraph.add(current);
+      const dependents = steps.filter(s => (s.depends_on || []).includes(current));
+      for (const dep of dependents) {
+        if (!subgraph.has(dep.id)) queue.push(dep.id);
+      }
+    }
+    
+    return subgraph;
+  }
+}

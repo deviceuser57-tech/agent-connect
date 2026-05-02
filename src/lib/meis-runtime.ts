@@ -273,13 +273,19 @@ export class ExecutionOrchestrator {
     let envDrift = 0;
     if (memUsage > 500) envDrift = 0.3; // Memory pressure
     
-    TrustDriftTracker.recordSignal({
-      anchor_id: 'TA-05-HOST-ISOLATION',
-      category: 'ENVIRONMENT',
-      expected_state: 'STABLE_RUNTIME_ENVIRONMENT',
-      observed_state: envDrift > 0 ? 'RESOURCE_PRESSURE_DETECTED' : 'STABLE_RUNTIME_ENVIRONMENT',
-      drift_score: envDrift
-    });
+    if (envDrift > 0) {
+      const rawSignal = {
+        anchor_id: 'TA-05-HOST-ISOLATION',
+        category: 'ENVIRONMENT' as any,
+        drift_type: 'MEASURABLE' as any,
+        severity: memUsage > 800 ? 'CRITICAL' : 'MEDIUM' as any,
+        expected_state: 'STABLE_RUNTIME_ENVIRONMENT',
+        observed_state: 'RESOURCE_PRESSURE_DETECTED',
+        source_id: 'KERNEL_ORCHESTRATOR'
+      };
+      const signedSignal = TrustDriftTracker.createSignedSignal(rawSignal);
+      TrustDriftTracker.recordSignal(signedSignal);
+    }
 
     // 🔒 FIX-10: Runtime Instance Binding
     const execution_seed = KernelSecurity.generateExecutionSeed(this.meis.id, this.stateManager.getState().sessionId, "BOOT_NONCE");
@@ -504,13 +510,33 @@ export class ExecutionOrchestrator {
   }
 
   private async executeStep(step: any, completed: Set<string>, inProgress: Set<string>) {
-    // 🛡️ TDTL: Global Trust State Enforcement
-    const trustState = TrustDriftTracker.getTrustState();
+    // 🛡️ TTAL: Cryptographically Verified Trust State Enforcement
+    const attestedState = TrustDriftTracker.getAttestedState();
+    const signals = TrustDriftTracker.getSignals();
+
+    if (!GovernanceAuditor.verifyDriftAttestation(attestedState, signals)) {
+       console.error("🚫 [TDTL] META_TRUST_VIOLATION: Attestation failed verification.");
+       await this.stateManager.updateStatus('HALTED');
+       throw new Error(`⚠️ EPISTEMIC_FAILURE: META_TRUST_VIOLATION`);
+    }
+
+    const trustState = attestedState.state;
     if (trustState === TrustState.UNTRUSTED) {
-      const report = TrustDriftTracker.getDriftReport();
-      console.error("🚫 [TDTL] EXECUTION HALTED: System Trust has reached UNTRUSTED state.", report);
+      console.error("🚫 [TDTL] EXECUTION HALTED: System Trust has reached UNTRUSTED state.", attestedState);
       await this.stateManager.updateStatus('HALTED');
-      throw new Error(`🚫 HARD_FAIL: TRUST_DEGRADATION_THRESHOLD_EXCEEDED (Score: ${report.global_score.toFixed(3)})`);
+      throw new Error(`🚫 HARD_FAIL: TRUST_DEGRADATION_THRESHOLD_EXCEEDED`);
+    }
+
+    if (trustState === TrustState.QUARANTINED) {
+      const isIsolated = RecoveryIsolator.isCausallyIsolated(step.id, this.meis.step_sequence, this.stateManager.getState());
+      if (isIsolated) {
+        console.warn(`⚠️ [TDTL] SUBGRAPH QUARANTINE: Blocking execution of ${step.id} due to Epistemic Failure.`);
+        throw new Error(`⚠️ EPISTEMIC_FAILURE: NODE_QUARANTINED`);
+      } else {
+        console.error("🚫 [TDTL] GLOBAL QUARANTINE: Cannot isolate failure. Halting system.");
+        await this.stateManager.updateStatus('HALTED');
+        throw new Error(`🚫 HARD_FAIL: GLOBAL_QUARANTINE_REQUIRED`);
+      }
     }
 
     this.currentPhase = ExecutionPhase.EXECUTION;
