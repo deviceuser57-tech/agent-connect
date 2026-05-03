@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { Upload, FileText, X, CheckCircle, Loader2, Image, FileAudio, FileVideo, File } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, Loader2, Image, FileAudio, FileVideo, File, RefreshCw } from 'lucide-react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 interface UploadDocumentDialogProps {

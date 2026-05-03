@@ -35,7 +35,7 @@ async function testAdaptiveGovernance() {
   const initialState = { driftScore: 0.5 }; // Moderate drift -> increased CSI
 
   console.log('\n--- ADAPTIVE PREFLIGHT SIMULATION START ---');
-  const result = await PreflightCompiler.simulate(sessionId, mockMEIS, initialState);
+  const result = await PreflightCompiler.simulate(sessionId, mockMEIS as any, initialState);
   console.log('\nFinal Adaptive Simulation Result:');
   console.log(JSON.stringify(result, null, 2));
   console.log('--- ADAPTIVE PREFLIGHT SIMULATION END ---\n');

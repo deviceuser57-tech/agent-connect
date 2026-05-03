@@ -1,6 +1,6 @@
 import { CEC } from './cognitive-enforcement-core';
 import { supabaseCompat as supabase } from '@/integrations/supabase/cmack-compat';
-import { TopologyResolver, ExecutionRouter, DynamicSwitchingController, AgentAllocationEngine, TopologyType, TopologyEngine } from './topology-engine';
+import { TopologyResolver, ExecutionRouter, DynamicSwitchingController, AgentAllocationEngine, TopologyType } from './topology-engine';
 import { SystemConstitutionLock } from './system-constitution-lock';
 import { ActionRegistry } from './step-actions';
 import { SYSTEM_INTENT, IntentValidator, IntentDriftDetector, PostExecutionValidator, SequenceValidator } from './system-intent';
@@ -12,13 +12,13 @@ export type MEIS = {
   step_sequence: any[];
   metadata?: any;
   constitution_signature?: string;
-  intent_signature: { // 🎯 AC-009.7
+  intent_signature?: { // 🎯 AC-009.7
     intent_id: string;
     alignment_hash: string;
   };
 };
 
-export type SystemStatus = 'IDLE' | 'EXECUTING' | 'HALTED' | 'COMPLETED' | 'FAILED' | 'STALLED';
+export type SystemStatus = 'IDLE' | 'EXECUTING' | 'HALTED' | 'COMPLETED' | 'FAILED' | 'STALLED' | 'STALL';
 
 export interface StepExecutionRecord {
   stepId: string;

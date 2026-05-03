@@ -23,7 +23,7 @@ async function testSystemStallOnViolation() {
   // 2. Verify Orchestrator Stall
   console.log('\n--- VERIFYING ORCHESTRATOR STALL ON LOCK VIOLATION ---');
   const stateManager = new RuntimeStateManager('session_illegal', mockMEIS.id);
-  const orchestrator = new ExecutionOrchestrator('session_illegal', mockMEIS);
+  const orchestrator = new ExecutionOrchestrator(mockMEIS as any);
   
   // We need to simulate the orchestrator running and hitting the lock
   // Since we integrated the lock check in ExecutionOrchestrator.run()

@@ -39,7 +39,7 @@ async function testPreflight() {
   const initialState = { riskScore: 0.1 };
 
   console.log('\n--- PREFLIGHT SIMULATION START ---');
-  const result = await PreflightCompiler.simulate(sessionId, mockMEIS, initialState);
+  const result = await PreflightCompiler.simulate(sessionId, mockMEIS as any, initialState);
   console.log('\nFinal Simulation Result:');
   console.log(JSON.stringify(result, null, 2));
   console.log('--- PREFLIGHT SIMULATION END ---\n');

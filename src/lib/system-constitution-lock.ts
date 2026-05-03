@@ -1,4 +1,4 @@
-import { crypto } from 'crypto';
+// crypto not required; using deterministic pseudo-hash below
 
 export type SystemLockState = 'CONSTITUTION_LOCKED' | 'UNLOCKED';
 

@@ -34,7 +34,7 @@ async function testRuntime() {
   };
 
   const sessionId = 'session_test_abc';
-  const orchestrator = new ExecutionOrchestrator(sessionId, mockMEIS);
+  const orchestrator = new ExecutionOrchestrator(mockMEIS as any);
 
   console.log('\n--- EXECUTION START ---');
   await orchestrator.run();
