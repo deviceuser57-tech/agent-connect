@@ -171,7 +171,7 @@ export class RewiringPlanGenerator {
       case "TOPOLOGY":
         actions.push({
           type: "TOPOLOGY_SWITCH",
-          target: meis.operational_layer.topology === "Mesh" ? "Hierarchical" : "Mesh",
+          target: meis.operational_layer.topology === "MESH" ? "HIERARCHICAL" : "MESH",
           justification_trace: `DRIFT_ATTRIBUTION::${attribution.root_cause}`
         });
         break;

@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Workspace } from '@/contexts/WorkspaceContext';
+import type { Workspace } from '@/contexts/WorkspaceContext';
 
 /**
  * Workspace API functions with full TypeScript support.
@@ -92,7 +92,7 @@ export const workspaceApi = {
    * Utilizes the `is_workspace_member` database function.
    */
   async checkAccess(workspaceId: string) {
-    const { data, error } = await supabase.rpc('is_workspace_member', {
+    const { data, error } = await (supabase as any).rpc('is_workspace_member', {
       workspace_id: workspaceId
     });
 

@@ -137,7 +137,7 @@ export class PreflightCompiler {
 
     // 2. Topology Feasibility & Costing
     const topology = TopologyResolver.resolve(meis);
-    const cost = TopologyCosting.calculate(topology, meis.step_sequence.length, 0.2);
+    const cost = TopologyCosting.calculate(topology as any, meis.step_sequence.length, 0.2);
     result.topologyFeasibility = { topology, costScore: cost, feasible: cost < 0.9 };
 
     if (!result.topologyFeasibility.feasible) {
