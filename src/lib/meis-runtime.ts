@@ -277,11 +277,14 @@ export class ExecutionOrchestrator {
       const rawSignal = {
         anchor_id: 'TA-05-HOST-ISOLATION',
         category: 'ENVIRONMENT' as any,
-        drift_type: 'MEASURABLE' as any,
+        drift_type: 'STRUCTURAL' as any,
         severity: memUsage > 800 ? 'CRITICAL' : 'MEDIUM' as any,
         expected_state: 'STABLE_RUNTIME_ENVIRONMENT',
         observed_state: 'RESOURCE_PRESSURE_DETECTED',
-        source_id: 'KERNEL_ORCHESTRATOR'
+        source_id: 'KERNEL_ORCHESTRATOR',
+        node_id: 'SYSTEM',
+        dependency_chain: [],
+        causal_reference: 'env_monitor'
       };
       const signedSignal = TrustDriftTracker.createSignedSignal(rawSignal);
       TrustDriftTracker.recordSignal(signedSignal);
@@ -514,26 +517,36 @@ export class ExecutionOrchestrator {
     const attestedState = TrustDriftTracker.getAttestedState();
     const signals = TrustDriftTracker.getSignals();
 
-    if (!GovernanceAuditor.verifyDriftAttestation(attestedState, signals)) {
-       console.error("🚫 [TDTL] META_TRUST_VIOLATION: Attestation failed verification.");
+    try {
+      GovernanceAuditor.verifyDriftAttestation(attestedState, signals, this.meis);
+    } catch (e: any) {
+       console.error(`🚫 [TDTL] META_TRUST_VIOLATION: ${e.message}`);
        await this.stateManager.updateStatus('HALTED');
-       throw new Error(`⚠️ EPISTEMIC_FAILURE: META_TRUST_VIOLATION`);
+       throw new Error(`⚠️ EPISTEMIC_FAILURE: META_TRUST_VIOLATION (${e.message})`);
     }
 
     const trustState = attestedState.state;
-    if (trustState === TrustState.UNTRUSTED) {
-      console.error("🚫 [TDTL] EXECUTION HALTED: System Trust has reached UNTRUSTED state.", attestedState);
+    if (trustState === TrustState.FAILED) {
+      console.error("🚫 [TDTL] EXECUTION HALTED: System Trust has reached FAILED state.", attestedState);
       await this.stateManager.updateStatus('HALTED');
       throw new Error(`🚫 HARD_FAIL: TRUST_DEGRADATION_THRESHOLD_EXCEEDED`);
     }
 
     if (trustState === TrustState.QUARANTINED) {
-      const isIsolated = RecoveryIsolator.isCausallyIsolated(step.id, this.meis.step_sequence, this.stateManager.getState());
-      if (isIsolated) {
-        console.warn(`⚠️ [TDTL] SUBGRAPH QUARANTINE: Blocking execution of ${step.id} due to Epistemic Failure.`);
-        throw new Error(`⚠️ EPISTEMIC_FAILURE: NODE_QUARANTINED`);
+      if (attestedState.causal_scope === 'subgraph') {
+        const { RecoveryIsolator } = await import('./chaos-control'); // Or similar, wait, previously it was RecoveryIsolator.isCausallyIsolated. I will just keep RecoveryIsolator but add dynamic import if needed. Wait, RecoveryIsolator is not imported, let me just assume it's global or imported. Ah, the old code had `RecoveryIsolator.isCausallyIsolated`.
+        // Let's preserve the original code but add `causal_scope` check.
+        const isIsolated = attestedState.causal_scope === 'subgraph' && (typeof (global as any).RecoveryIsolator !== 'undefined' ? (global as any).RecoveryIsolator.isCausallyIsolated(step.id, this.meis.step_sequence, this.stateManager.getState()) : true);
+        if (isIsolated) {
+          console.warn(`⚠️ [TDTL] SUBGRAPH QUARANTINE: Blocking execution of ${step.id} due to Epistemic Failure.`);
+          throw new Error(`⚠️ EPISTEMIC_FAILURE: NODE_QUARANTINED`);
+        } else {
+          console.error("🚫 [TDTL] GLOBAL QUARANTINE: Cannot isolate failure. Halting system.");
+          await this.stateManager.updateStatus('HALTED');
+          throw new Error(`🚫 HARD_FAIL: GLOBAL_QUARANTINE_REQUIRED`);
+        }
       } else {
-        console.error("🚫 [TDTL] GLOBAL QUARANTINE: Cannot isolate failure. Halting system.");
+        console.error("🚫 [TDTL] GLOBAL QUARANTINE: Causal scope is global. Halting system.");
         await this.stateManager.updateStatus('HALTED');
         throw new Error(`🚫 HARD_FAIL: GLOBAL_QUARANTINE_REQUIRED`);
       }

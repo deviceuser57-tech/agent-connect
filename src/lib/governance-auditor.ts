@@ -22,14 +22,17 @@ export class GovernanceAuditor {
     // 1. Verify Attestation Integrity
     for (const att of attestations) {
       if (!KernelSecurity.verifyValidatorSignature(att.validator_hash, att.validator_signature)) {
-        TrustDriftTracker.recordSignal({
+        TrustDriftTracker.recordSignal(TrustDriftTracker.createSignedSignal({
           anchor_id: 'TA-01-KERNEL-LOGIC',
           category: 'VALIDATION',
           drift_type: 'UNOBSERVABLE', // 🔴 TDTL HARD CLOSURE: Disagreement = UNOBSERVABLE
           severity: 'CRITICAL',       // 🔴 Forces QUARANTINED state
           expected_state: 'VALIDATOR_IDENTITY_VERIFIED',
-          observed_state: 'UNTRUSTED_VALIDATOR_IDENTITY'
-        });
+          observed_state: 'UNTRUSTED_VALIDATOR_IDENTITY',
+          node_id: stepId,
+          dependency_chain: [],
+          causal_reference: `validator_check_${stepId}`
+        }));
         console.error(`🛑 [Auditor] UNTRUSTED_VALIDATOR detected in attestation for ${stepId}`);
         return false;
       }
@@ -58,33 +61,67 @@ export class GovernanceAuditor {
    */
   static verifyDriftAttestation(
     attestedState: import('./trust-drift-tracker').AttestedDriftState,
-    signals: import('./trust-drift-tracker').AttestedDriftSignal[]
+    signals: import('./trust-drift-tracker').AttestedDriftSignal[],
+    meis?: any
   ): boolean {
     console.log(`🔍 [Auditor] Verifying TTAL Drift Attestation...`);
 
     // 1. Verify Kernel Signature
-    const statePayload = `${attestedState.state}:${attestedState.derived_from_signals_hash}:${attestedState.validator_hash}`;
+    const statePayload = `${attestedState.state}:${attestedState.derived_from_signals_hash}:${attestedState.validator_hash}:${attestedState.causal_scope}:${attestedState.affected_nodes.join(',')}`;
     const expectedHash = KernelSecurity.hashDriftData(statePayload);
     const expectedSig = KernelSecurity.signDriftData(expectedHash);
     
     if (attestedState.kernel_signature !== expectedSig) {
       console.error(`🛑 [Auditor] META-DRIFT: Invalid Drift State Signature!`);
-      return false;
+      throw new Error('EpistemicFailure: META_DRIFT_DETECTED');
     }
 
     // 2. Verify Signals Integrity
     const recomputedSignalsHash = KernelSecurity.hashDriftData(JSON.stringify(signals.map(s => s.signal_hash)));
     if (recomputedSignalsHash !== attestedState.derived_from_signals_hash) {
       console.error(`🛑 [Auditor] META-DRIFT: Signals Hash Mismatch!`);
-      return false;
+      throw new Error('EpistemicFailure: META_DRIFT_DETECTED');
     }
 
-    // 3. Independent Recomputation (Logic Verification)
+    // 3. Independent Recomputation (Logic Verification) & Hash Chain Verification
     const { TrustDriftTracker } = require('./trust-drift-tracker');
+    let recomputedChain = "TTAL_GENESIS";
+    let currentSignals: import('./trust-drift-tracker').AttestedDriftSignal[] = [];
+    
+    for (const signal of signals) {
+      currentSignals.push(signal);
+      const tempState = TrustDriftTracker.computeStateFromSignals(currentSignals);
+      const stateHash = KernelSecurity.hashDriftData(tempState);
+      recomputedChain = KernelSecurity.hashDriftData(`${recomputedChain}:${signal.signal_hash}:${stateHash}`);
+    }
+
+    if (recomputedChain !== attestedState.chain_hash) {
+      console.error(`🛑 [Auditor] META-DRIFT: Chain Invalid! Recomputed: ${recomputedChain}, Reported: ${attestedState.chain_hash}`);
+      throw new Error('EpistemicFailure: META_DRIFT_DETECTED');
+    }
+
     const recomputedState = TrustDriftTracker.computeStateFromSignals(signals);
     if (recomputedState !== attestedState.state) {
       console.error(`🛑 [Auditor] META-DRIFT: Logic Deviation Detected! Recomputed: ${recomputedState}, Reported: ${attestedState.state}`);
-      return false;
+      throw new Error('EpistemicFailure: META_DRIFT_DETECTED');
+    }
+
+    // 4. Causal Drift Trace Binding Verification
+    if (meis && meis.step_sequence) {
+      const allNodeIds = new Set(meis.step_sequence.map((s: any) => s.id));
+      for (const signal of signals) {
+        if (!signal.node_id || !signal.dependency_chain || !signal.causal_reference) {
+          throw new Error('EpistemicFailure: INVALID_CAUSAL_DRIFT - Missing causal binding fields');
+        }
+        if (signal.node_id !== 'SYSTEM' && !allNodeIds.has(signal.node_id)) {
+          throw new Error('EpistemicFailure: INVALID_CAUSAL_DRIFT - node_id not in execution graph');
+        }
+        for (const dep of signal.dependency_chain) {
+          if (dep !== 'SYSTEM' && !allNodeIds.has(dep)) {
+            throw new Error('EpistemicFailure: INVALID_CAUSAL_DRIFT - dependency_chain invalid');
+          }
+        }
+      }
     }
 
     console.log(`✅ [Auditor] TTAL Attestation Verified. Valid state: ${attestedState.state}`);

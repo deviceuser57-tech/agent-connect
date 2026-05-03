@@ -11,10 +11,10 @@ export enum TrustState {
   DEGRADED = 'DEGRADED',
   CRITICAL = 'CRITICAL',
   QUARANTINED = 'QUARANTINED',
-  UNTRUSTED = 'UNTRUSTED'
+  FAILED = 'FAILED'
 }
 
-export type DriftType = 'MEASURABLE' | 'STRUCTURAL' | 'UNOBSERVABLE';
+export type DriftType = 'CRITICAL' | 'STRUCTURAL' | 'ACCUMULATED' | 'UNOBSERVABLE';
 export type DriftSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type DriftCategory = 'ROOT' | 'ENTROPY' | 'ENVIRONMENT' | 'VALIDATION';
 
@@ -26,6 +26,9 @@ export interface AttestedDriftSignal {
   expected_state: string;
   observed_state: string;
   source_id: string;
+  node_id: string;
+  dependency_chain: string[];
+  causal_reference: string;
   timestamp: string;
   signal_hash: string;
   signature: string;
@@ -40,6 +43,8 @@ export enum FailureType {
 export interface AttestedDriftState {
   state: TrustState;
   failure_semantics: FailureType | null;
+  affected_nodes: string[];
+  causal_scope: 'subgraph' | 'global';
   derived_from_signals_hash: string;
   validator_hash: string;
   kernel_signature: string;
@@ -71,9 +76,6 @@ export class TrustDriftTracker {
     };
   }
 
-  /**
-   * Evaluates incoming signal against hard epistemological limits.
-   */
   static enforceEpistemologicalLimits(signal: Pick<AttestedDriftSignal, 'drift_type' | 'severity' | 'category'>) {
     const limits = TrustManifest.monitoring_limits;
     if (!limits) throw new Error("🚫 HARD_FAIL: TrustManifest monitoring_limits not found.");
@@ -82,11 +84,8 @@ export class TrustDriftTracker {
     let resolvedSeverity = signal.severity;
 
     if (signal.category === 'ENVIRONMENT' && limits['hardware'] === 'UNOBSERVABLE') resolvedType = 'UNOBSERVABLE';
-    else if (signal.category === 'ENTROPY' && limits['entropy_source'] === 'PARTIAL') {
-      if (signal.drift_type === 'STRUCTURAL') resolvedType = 'UNOBSERVABLE';
-    } else if (signal.category === 'VALIDATION' && limits['external_validators'] === 'ASSUMED_TRUST') {
-       if (signal.drift_type !== 'MEASURABLE') resolvedType = 'UNOBSERVABLE';
-    }
+    else if (signal.category === 'ENTROPY' && limits['entropy_source'] === 'PARTIAL') resolvedType = 'UNOBSERVABLE';
+    else if (signal.category === 'VALIDATION' && limits['external_validators'] === 'ASSUMED_TRUST') resolvedType = 'UNOBSERVABLE';
 
     return { drift_type: resolvedType, severity: resolvedSeverity };
   }
@@ -96,13 +95,17 @@ export class TrustDriftTracker {
    */
   static computeStateFromSignals(signals: AttestedDriftSignal[]): TrustState {
     if (signals.length === 0) return TrustState.STABLE;
-    if (signals.some(s => s.severity === 'CRITICAL')) return TrustState.UNTRUSTED;
+    
+    if (signals.some(s => s.drift_type === 'CRITICAL')) return TrustState.FAILED;
     if (signals.some(s => s.drift_type === 'UNOBSERVABLE')) return TrustState.QUARANTINED;
-    return TrustState.STABLE; // Only using strict rules now, score fallback removed per TTAL purity
+    if (signals.some(s => s.drift_type === 'STRUCTURAL')) return TrustState.CRITICAL;
+    if (signals.some(s => s.drift_type === 'ACCUMULATED')) return TrustState.DEGRADED;
+
+    return TrustState.STABLE;
   }
 
   static getFailureSemanticsForState(state: TrustState): FailureType | null {
-    if (state === TrustState.UNTRUSTED) return FailureType.HARD_FAILURE;
+    if (state === TrustState.FAILED) return FailureType.HARD_FAILURE;
     if (state === TrustState.QUARANTINED) return FailureType.EPISTEMIC_FAILURE;
     if (state === TrustState.CRITICAL) return FailureType.SOFT_FAILURE;
     return null;
@@ -138,13 +141,19 @@ export class TrustDriftTracker {
    */
   static getAttestedState(): AttestedDriftState {
     const derived_from_signals_hash = KernelSecurity.hashDriftData(JSON.stringify(this.SIGNALS.map(s => s.signal_hash)));
-    const statePayload = `${this.CURRENT_STATE}:${derived_from_signals_hash}:${this.VALIDATOR_HASH}`;
+    const affected_nodes = [...new Set(this.SIGNALS.map(s => s.node_id))].filter(id => id !== 'SYSTEM');
+    const isGlobal = this.SIGNALS.some(s => s.category === 'ENVIRONMENT' || s.category === 'ENTROPY' || s.category === 'ROOT' || s.node_id === 'SYSTEM');
+    const causal_scope = isGlobal ? 'global' : 'subgraph';
+
+    const statePayload = `${this.CURRENT_STATE}:${derived_from_signals_hash}:${this.VALIDATOR_HASH}:${causal_scope}:${affected_nodes.join(',')}`;
     const stateHash = KernelSecurity.hashDriftData(statePayload);
     const kernel_signature = KernelSecurity.signDriftData(stateHash);
 
     return {
       state: this.CURRENT_STATE,
       failure_semantics: this.getFailureSemanticsForState(this.CURRENT_STATE),
+      affected_nodes,
+      causal_scope,
       derived_from_signals_hash,
       validator_hash: this.VALIDATOR_HASH,
       kernel_signature,
