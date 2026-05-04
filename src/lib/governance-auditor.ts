@@ -29,7 +29,7 @@ export class GovernanceAuditor {
           severity: 'CRITICAL',       // 🔴 Forces QUARANTINED state
           expected_state: 'VALIDATOR_IDENTITY_VERIFIED',
           observed_state: 'UNTRUSTED_VALIDATOR_IDENTITY',
-          node_id: stepId,
+          node_id: 'VALIDATOR::EXTERNAL',
           dependency_chain: [],
           causal_reference: `validator_check_${stepId}`
         }));
@@ -113,11 +113,11 @@ export class GovernanceAuditor {
         if (!signal.node_id || !signal.dependency_chain || !signal.causal_reference) {
           throw new Error('EpistemicFailure: INVALID_CAUSAL_DRIFT - Missing causal binding fields');
         }
-        if (signal.node_id !== 'SYSTEM' && !allNodeIds.has(signal.node_id)) {
+        if (!signal.node_id.includes('::') && !allNodeIds.has(signal.node_id)) {
           throw new Error('EpistemicFailure: INVALID_CAUSAL_DRIFT - node_id not in execution graph');
         }
         for (const dep of signal.dependency_chain) {
-          if (dep !== 'SYSTEM' && !allNodeIds.has(dep)) {
+          if (!dep.includes('::') && !allNodeIds.has(dep)) {
             throw new Error('EpistemicFailure: INVALID_CAUSAL_DRIFT - dependency_chain invalid');
           }
         }

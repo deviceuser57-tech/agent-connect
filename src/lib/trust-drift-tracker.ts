@@ -141,8 +141,8 @@ export class TrustDriftTracker {
    */
   static getAttestedState(): AttestedDriftState {
     const derived_from_signals_hash = KernelSecurity.hashDriftData(JSON.stringify(this.SIGNALS.map(s => s.signal_hash)));
-    const affected_nodes = [...new Set(this.SIGNALS.map(s => s.node_id))].filter(id => id !== 'SYSTEM');
-    const isGlobal = this.SIGNALS.some(s => s.category === 'ENVIRONMENT' || s.category === 'ENTROPY' || s.category === 'ROOT' || s.node_id === 'SYSTEM');
+    const affected_nodes = [...new Set(this.SIGNALS.map(s => s.node_id))].filter(id => !id.includes('::'));
+    const isGlobal = this.SIGNALS.some(s => s.category === 'ENVIRONMENT' || s.category === 'ENTROPY' || s.category === 'ROOT' || s.node_id.includes('::'));
     const causal_scope = isGlobal ? 'global' : 'subgraph';
 
     const statePayload = `${this.CURRENT_STATE}:${derived_from_signals_hash}:${this.VALIDATOR_HASH}:${causal_scope}:${affected_nodes.join(',')}`;

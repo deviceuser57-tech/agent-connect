@@ -282,7 +282,7 @@ export class ExecutionOrchestrator {
         expected_state: 'STABLE_RUNTIME_ENVIRONMENT',
         observed_state: 'RESOURCE_PRESSURE_DETECTED',
         source_id: 'KERNEL_ORCHESTRATOR',
-        node_id: 'SYSTEM',
+        node_id: 'ENVIRONMENT::MEMORY',
         dependency_chain: [],
         causal_reference: 'env_monitor'
       };
