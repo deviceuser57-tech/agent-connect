@@ -534,7 +534,7 @@ export class ExecutionOrchestrator {
 
     if (trustState === TrustState.QUARANTINED) {
       if (attestedState.causal_scope === 'subgraph') {
-        const { RecoveryIsolator } = await import('./chaos-control'); // Or similar, wait, previously it was RecoveryIsolator.isCausallyIsolated. I will just keep RecoveryIsolator but add dynamic import if needed. Wait, RecoveryIsolator is not imported, let me just assume it's global or imported. Ah, the old code had `RecoveryIsolator.isCausallyIsolated`.
+        // RecoveryIsolator is consulted via the global fallback below if present.
         // Let's preserve the original code but add `causal_scope` check.
         const isIsolated = attestedState.causal_scope === 'subgraph' && (typeof (global as any).RecoveryIsolator !== 'undefined' ? (global as any).RecoveryIsolator.isCausallyIsolated(step.id, this.meis.step_sequence, this.stateManager.getState()) : true);
         if (isIsolated) {

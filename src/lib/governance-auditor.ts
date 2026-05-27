@@ -29,6 +29,7 @@ export class GovernanceAuditor {
           severity: 'CRITICAL',       // 🔴 Forces QUARANTINED state
           expected_state: 'VALIDATOR_IDENTITY_VERIFIED',
           observed_state: 'UNTRUSTED_VALIDATOR_IDENTITY',
+          source_id: 'GovernanceAuditor.audit',
           node_id: 'VALIDATOR::EXTERNAL',
           dependency_chain: [],
           causal_reference: `validator_check_${stepId}`

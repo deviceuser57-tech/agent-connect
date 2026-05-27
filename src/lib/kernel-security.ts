@@ -28,13 +28,18 @@ export class KernelSecurity {
     }
 
     if (!this.verifyBuildSignature(system_fingerprint, build_signature)) {
-      TrustDriftTracker.recordSignal({
+      TrustDriftTracker.recordSignal(TrustDriftTracker.createSignedSignal({
         anchor_id: 'TA-02-MANIFEST-SIGNER',
         category: 'ROOT',
+        drift_type: 'CRITICAL',
+        severity: 'CRITICAL',
         expected_state: 'SIGNED_MANIFEST_VALID',
         observed_state: 'INVALID_BUILD_SIGNATURE',
-        drift_score: 1.0
-      });
+        source_id: 'KernelSecurity.initializeRootOfTrust',
+        node_id: 'KERNEL::ROOT',
+        dependency_chain: [],
+        causal_reference: 'root_init_invalid_signature'
+      }));
       throw new Error("🚫 HARD_FAIL: BOOT_INTEGRITY_COMPROMISED");
     }
 
@@ -42,13 +47,18 @@ export class KernelSecurity {
     this.RECOVERY_ESCROW_HASH = recovery_hash;
     this.ROOT_INITIALIZED = true;
 
-    TrustDriftTracker.recordSignal({
+    TrustDriftTracker.recordSignal(TrustDriftTracker.createSignedSignal({
       anchor_id: 'TA-02-MANIFEST-SIGNER',
       category: 'ROOT',
+      drift_type: 'ACCUMULATED',
+      severity: 'LOW',
       expected_state: 'SIGNED_MANIFEST_VALID',
       observed_state: 'SIGNED_MANIFEST_VALID',
-      drift_score: 0.0
-    });
+      source_id: 'KernelSecurity.initializeRootOfTrust',
+      node_id: 'KERNEL::ROOT',
+      dependency_chain: [],
+      causal_reference: 'root_init_success'
+    }));
 
     console.log("🔒 [Kernel] Root of Trust Anchored (Signed Manifest Verified).");
   }
@@ -77,13 +87,18 @@ export class KernelSecurity {
     if (variance < 0.3) drift = 0.4;
     if (entropy.length < 8) drift = 0.6;
 
-    TrustDriftTracker.recordSignal({
+    TrustDriftTracker.recordSignal(TrustDriftTracker.createSignedSignal({
       anchor_id: 'TA-03-ENTROPY-QUALITY',
       category: 'ENTROPY',
+      drift_type: drift > 0 ? 'STRUCTURAL' : 'ACCUMULATED',
+      severity: drift >= 0.6 ? 'HIGH' : drift >= 0.4 ? 'MEDIUM' : 'LOW',
       expected_state: 'HIGH_VARIANCE_ENTROPY',
       observed_state: drift > 0 ? 'LOW_QUALITY_ENTROPY' : 'HIGH_QUALITY_ENTROPY',
-      drift_score: drift
-    });
+      source_id: 'KernelSecurity.injectExternalEntropy',
+      node_id: 'KERNEL::ENTROPY',
+      dependency_chain: [],
+      causal_reference: 'external_entropy_injection'
+    }));
 
     this.EXTERNAL_ENTROPY = this.hashString(`${this.EXTERNAL_ENTROPY}:${entropy}`);
     console.log("🎲 [Kernel] External Entropy Injected.");
