@@ -613,7 +613,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      cognition_traces_compat: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          l0: Json | null
+          l1: Json | null
+          l2: Json | null
+          l3: Json | null
+          l4: Json | null
+          l5: Json | null
+          l6: Json | null
+          l7: Json | null
+          raw_trace: Json | null
+          session_id: string | null
+          timestamp: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          l0?: never
+          l1?: never
+          l2?: never
+          l3?: never
+          l4?: never
+          l5?: never
+          l6?: never
+          l7?: never
+          raw_trace?: Json | null
+          session_id?: string | null
+          timestamp?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          l0?: never
+          l1?: never
+          l2?: never
+          l3?: never
+          l4?: never
+          l5?: never
+          l6?: never
+          l7?: never
+          raw_trace?: Json | null
+          session_id?: string | null
+          timestamp?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       match_decision_memory:
