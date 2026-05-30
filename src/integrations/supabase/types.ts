@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      cognitive_dna: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          trait_key: string
+          trait_value: Json
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          trait_key: string
+          trait_value: Json
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          trait_key?: string
+          trait_value?: Json
+          version?: number
+        }
+        Relationships: []
+      }
       conflict_logs: {
         Row: {
           dna_preference: Json | null
