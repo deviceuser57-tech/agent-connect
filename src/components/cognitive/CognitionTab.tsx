@@ -4,15 +4,23 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Brain, Zap, Database, GitBranch, Shield } from 'lucide-react';
 import { CycleVisualizer } from './CycleVisualizer';
+import { useCognitionTraceCompat } from '@/hooks/useCognitionTraceCompat';
 import type { CognitionTrace } from '@/lib/cognitive/types';
 
 interface Props {
   trace: CognitionTrace | null;
   hotPath?: boolean;
+  /** Phase A2 — when `trace` is null, fall back to the sovereign compat view. */
+  sessionId?: string | null;
 }
 
-export function CognitionTab({ trace, hotPath }: Props) {
-  if (!trace) {
+export function CognitionTab({ trace, hotPath, sessionId }: Props) {
+  // Sovereign read-only fallback: read latest projected trace from
+  // `cognition_traces_compat` when no live trace prop is provided.
+  const { trace: fallback } = useCognitionTraceCompat(trace ? null : sessionId ?? null);
+  const effective = trace ?? fallback;
+
+  if (!effective) {
     return (
       <div className="text-center text-sm text-muted-foreground py-12">
         <Brain className="h-10 w-10 mx-auto mb-3 opacity-40" />
@@ -20,6 +28,7 @@ export function CognitionTab({ trace, hotPath }: Props) {
       </div>
     );
   }
+
 
   return (
     <ScrollArea className="max-h-[600px] pr-3">
