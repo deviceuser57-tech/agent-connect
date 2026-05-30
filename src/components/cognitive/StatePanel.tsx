@@ -118,6 +118,26 @@ export const StatePanel = ({ sessionId }: { sessionId: string }) => {
               </span>
             </div>
           </div>
+          {(() => {
+            const drift = Number(lastTrace?.trace_data?.attestation?.drift ?? 0);
+            const hasDrift = lastTrace?.trace_data?.attestation?.drift != null;
+            return hasDrift ? (
+              <div>
+                <div className="flex justify-between text-[10px] mb-1">
+                  <span className="text-slate-500 uppercase font-bold">TTAL Drift</span>
+                  <span className={`font-mono ${drift > 0.2 ? 'text-amber-500' : 'text-emerald-400'}`}>
+                    {drift.toFixed(3)}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${drift > 0.2 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                    style={{ width: `${Math.min(drift * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            ) : null;
+          })()}
           {lastTrace?.mutation_blocked && (
             <div className="p-2 bg-red-900/20 border border-red-900/50 rounded text-[9px] font-mono text-red-500 animate-pulse text-center">
               ⚠ MUTATION BLOCKED BY RATE LIMITER
@@ -125,6 +145,7 @@ export const StatePanel = ({ sessionId }: { sessionId: string }) => {
           )}
         </div>
       </div>
+
 
       {/* 🧬 DNA Panel */}
       <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl">
