@@ -2,19 +2,15 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
-import { RuntimeError } from '@/lib/error-schema';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+const FALLBACK_URL = "https://hexofmnsxxwkriznwmfq.supabase.co";
+const FALLBACK_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhleG9mbW5zeHh3a3Jpem53bWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NDE3NDUsImV4cCI6MjA5MjUxNzc0NX0.ZHqGiMQwskglFfZooIuzpsp-6L-TSSnsCSCn_hjhOWo";
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  throw new RuntimeError({
-    code: "SUPABASE_CLIENT_INITIALIZATION_FAILED",
-    probable_cause: "Missing or partial configuration",
-    recovery: "Ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY/ANON_KEY are set",
-    fatal: true
-  });
-}
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || FALLBACK_URL;
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  FALLBACK_KEY;
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
