@@ -527,15 +527,28 @@ export const WorkflowBuilder: React.FC = () => {
         createdAgentIds.push(agentData.id);
       }
 
-      // Resolve agent index references to actual IDs
-      const getActualAgentId = (indexStr: string) => {
-        const match = indexStr.match(/agent_index_(\d+)/);
+      // Resolve agent index references to actual IDs (accepts numbers, strings, or objects)
+      const getActualAgentId = (ref: unknown): string | null => {
+        if (ref == null) return null;
+        if (typeof ref === 'number' && Number.isFinite(ref)) {
+          return createdAgentIds[ref] || null;
+        }
+        if (typeof ref === 'object') {
+          const obj = ref as Record<string, unknown>;
+          const inner = obj.agent_index ?? obj.index ?? obj.id ?? obj.agent ?? obj.name;
+          return inner === undefined ? null : getActualAgentId(inner);
+        }
+        const str = String(ref);
+        const match = str.match(/agent_index_(\d+)/) || str.match(/^(\d+)$/);
         if (match) {
-          const idx = parseInt(match[1]);
+          const idx = parseInt(match[1], 10);
           return createdAgentIds[idx] || null;
         }
-        return null;
+        // Fall back to matching by display name
+        const byName = wf.agents.findIndex((a) => a.display_name === str);
+        return byName >= 0 ? createdAgentIds[byName] || null : null;
       };
+
 
       // Build canvas nodes
       const nodeSpacing = 250;
