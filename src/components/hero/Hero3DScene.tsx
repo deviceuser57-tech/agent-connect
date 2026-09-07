@@ -556,20 +556,26 @@ export function Hero3DScene() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
 
-  // Simulate loading progress (since we're not using useProgress outside Canvas)
+  // Deterministic intro progress with a hard safety timeout so the overlay
+  // can never trap the page.
   useEffect(() => {
+    const start = Date.now();
+    const DURATION = 1200;
     const interval = setInterval(() => {
-      setLoadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => setIsLoaded(true), 500);
-          return 100;
-        }
-        return prev + Math.random() * 15 + 5;
-      });
-    }, 100);
-    return () => clearInterval(interval);
+      const pct = Math.min(100, ((Date.now() - start) / DURATION) * 100);
+      setLoadProgress(pct);
+      if (pct >= 100) clearInterval(interval);
+    }, 60);
+    const done = setTimeout(() => {
+      setLoadProgress(100);
+      setIsLoaded(true);
+    }, DURATION + 400);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(done);
+    };
   }, []);
+
 
   const handleFeatureClick = useCallback((feature: FeatureInfo) => {
     setSelectedFeature(feature);
