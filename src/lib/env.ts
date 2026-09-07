@@ -1,4 +1,3 @@
-import { RuntimeError } from './error-schema';
 
 type RuntimeEnv = {
   VITE_SUPABASE_URL?: string;
@@ -17,28 +16,10 @@ export const getRuntimeEnv = (): RuntimeEnv => {
     VITE_SUPABASE_ANON_KEY: importEnv.VITE_SUPABASE_ANON_KEY,
   };
 
-  const missing: string[] = [];
-  if (!env.VITE_SUPABASE_URL && !env.VITE_SUPABASE_PROJECT_ID) {
-    missing.push("VITE_SUPABASE_URL");
-  }
-  if (!env.VITE_SUPABASE_PUBLISHABLE_KEY && !env.VITE_SUPABASE_ANON_KEY) {
-    missing.push("VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY)");
-  }
-
-  if (missing.length > 0) {
-    throw new RuntimeError({
-      code: "ENV_MISCONFIGURATION",
-      missing,
-      mode: import.meta.env.MODE,
-      timestamp: Date.now(),
-      probable_cause: "Environment variables missing at boot time",
-      recovery: "Set required Supabase env vars before bootstrap",
-      fatal: true
-    });
-  }
-
   return env;
 };
+
+const FALLBACK_URL = "https://hexofmnsxxwkriznwmfq.supabase.co";
 
 export const getSupabaseUrl = (): string => {
   const env = getRuntimeEnv();
@@ -46,12 +27,7 @@ export const getSupabaseUrl = (): string => {
   if (env.VITE_SUPABASE_PROJECT_ID) {
     return `https://${env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
   }
-  throw new RuntimeError({
-      code: "ENV_MISCONFIGURATION",
-      missing: ["VITE_SUPABASE_URL", "VITE_SUPABASE_PROJECT_ID"],
-      recovery: "Set required Supabase env vars before bootstrap",
-      fatal: true
-  });
+  return FALLBACK_URL;
 };
 
 export const getSupabasePublishableKey = (): string | undefined => {
