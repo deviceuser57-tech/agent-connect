@@ -329,6 +329,9 @@ export const WorkflowBuilder: React.FC = () => {
     if (!userMessage.trim()) return;
 
     const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
+    // 🔒 Intent Lock: the very first user request becomes the immutable root intent
+    const activeRootIntent = rootIntent ?? messages.find(m => m.role === 'user')?.content ?? userMessage;
+    if (!rootIntent) setRootIntent(activeRootIntent);
     setMessages(newMessages);
     setInput('');
     setIsLoading(true);
@@ -357,7 +360,7 @@ export const WorkflowBuilder: React.FC = () => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ messages: newMessages, system_mode: systemMode }),
+            body: JSON.stringify({ messages: newMessages, system_mode: systemMode, root_intent: activeRootIntent }),
           }
         );
 
@@ -469,6 +472,7 @@ export const WorkflowBuilder: React.FC = () => {
           workflow: finalWf,
         };
         setGeneratedWorkflow(safeWorkflow);
+        setIntentAlignment(checkIntentAlignment(activeRootIntent, finalWf));
       }
     } catch (error: any) {
       console.error('Stream error:', error);
