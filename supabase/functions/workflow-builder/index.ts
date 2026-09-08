@@ -32,6 +32,31 @@ const getAIConfig = () => {
   return { apiUrl: null, apiKey: null, model: null, provider: null };
 };
 
+// 🔒 INTENT LOCK — the user's original request is re-injected as an immutable
+// constraint on every turn, so later chat turns can never replace the domain.
+const buildIntentLockMessages = (rootIntent: unknown): Array<{ role: string; content: string }> => {
+  if (typeof rootIntent !== 'string' || rootIntent.trim().length === 0) return [];
+  const intent = rootIntent.trim().slice(0, 4000);
+  return [{
+    role: 'system',
+    content: `═══ IMMUTABLE TASK INTENT (NON-NEGOTIABLE) ═══
+The user's ORIGINAL request is:
+"""
+${intent}
+"""
+
+HARD CONSTRAINTS:
+1. Every agent, role, task and output you design MUST serve THIS domain and THIS goal.
+2. You may NEVER replace this task with a generic technical/infrastructure system
+   (e.g. "command resolver", "data pipeline", "chatbot") unless the original request
+   explicitly asks for it.
+3. The domain vocabulary of the original request MUST appear in agent names, roles and tasks.
+4. Later messages may REFINE this intent; they may NOT replace its domain.
+5. Before emitting JSON, self-check: "Would a domain expert of the ORIGINAL request
+   recognise these agents as their team?" If not, redesign before answering.`,
+  }];
+};
+
 const buildSystemPrompt = (mode: 'auto' | 'workflow' | 'cognitive' | 'hybrid') => `You are an Adaptive System Designer — an intelligent System Architect that designs the RIGHT KIND of system for the user's intent, not a one-size-fits-all workflow.
 
 ═══════════════════════════════════════
