@@ -996,6 +996,31 @@ export const WorkflowBuilder: React.FC = () => {
                   </div>
                 </div>
 
+                {intentAlignment?.checked && !intentAlignment.aligned && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                      <AlertTriangle className="h-4 w-4" />
+                      Intent drift detected
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This design does not clearly serve your original request
+                      (match {Math.round(intentAlignment.score * 100)}%). Missing key topics:{' '}
+                      <span className="font-medium">{intentAlignment.missingTerms.slice(0, 8).join(', ')}</span>.
+                      Review carefully before deploying.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isLoading}
+                      onClick={() => streamChat(
+                        `Your design drifted away from my original request. Discard it and re-generate a system that strictly serves this ORIGINAL intent, using its domain terminology in every agent and task:\n\n"""${rootIntent ?? ''}"""`
+                      )}
+                    >
+                      Re-generate with original intent
+                    </Button>
+                  </div>
+                )}
+
                 <Tabs defaultValue="preview" className="w-full">
                   <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="preview" className="gap-1 text-xs">
