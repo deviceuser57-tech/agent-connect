@@ -13,6 +13,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
 import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
+import { checkIntentAlignment, type IntentAlignmentResult } from '@/lib/workflows/intentAlignment';
 import { decompose, inferMode, recallMemory, startTrace, updateTrace, runOrchestration, completeTrace, writeMemory } from '@/lib/cognitive/orchestrator';
 import { loadOrCreateDNA } from '@/lib/cognitive/dna';
 import { ArchitectureNegotiation } from '@/components/cognitive/ArchitectureNegotiation';
@@ -285,6 +286,8 @@ export const WorkflowBuilder: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [generatedWorkflow, setGeneratedWorkflow] = useState<WorkflowResult | null>(null);
+  const [rootIntent, setRootIntent] = useState<string | null>(null);
+  const [intentAlignment, setIntentAlignment] = useState<IntentAlignmentResult | null>(null);
   const [systemMode, setSystemMode] = useState<SystemMode>('auto');
   const [cognitiveEnabled, setCognitiveEnabled] = useState(settings.cognitiveEngineEnabled);
   // Sync local toggle when global settings change
@@ -326,6 +329,9 @@ export const WorkflowBuilder: React.FC = () => {
     if (!userMessage.trim()) return;
 
     const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
+    // 🔒 Intent Lock: the very first user request becomes the immutable root intent
+    const activeRootIntent = rootIntent ?? messages.find(m => m.role === 'user')?.content ?? userMessage;
+    if (!rootIntent) setRootIntent(activeRootIntent);
     setMessages(newMessages);
     setInput('');
     setIsLoading(true);
@@ -354,7 +360,7 @@ export const WorkflowBuilder: React.FC = () => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ messages: newMessages, system_mode: systemMode }),
+            body: JSON.stringify({ messages: newMessages, system_mode: systemMode, root_intent: activeRootIntent }),
           }
         );
 
@@ -466,6 +472,7 @@ export const WorkflowBuilder: React.FC = () => {
           workflow: finalWf,
         };
         setGeneratedWorkflow(safeWorkflow);
+        setIntentAlignment(checkIntentAlignment(activeRootIntent, finalWf));
       }
     } catch (error: any) {
       console.error('Stream error:', error);
@@ -988,6 +995,31 @@ export const WorkflowBuilder: React.FC = () => {
                     </Badge>
                   </div>
                 </div>
+
+                {intentAlignment?.checked && !intentAlignment.aligned && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                      <AlertTriangle className="h-4 w-4" />
+                      Intent drift detected
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This design does not clearly serve your original request
+                      (match {Math.round(intentAlignment.score * 100)}%). Missing key topics:{' '}
+                      <span className="font-medium">{intentAlignment.missingTerms.slice(0, 8).join(', ')}</span>.
+                      Review carefully before deploying.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isLoading}
+                      onClick={() => streamChat(
+                        `Your design drifted away from my original request. Discard it and re-generate a system that strictly serves this ORIGINAL intent, using its domain terminology in every agent and task:\n\n"""${rootIntent ?? ''}"""`
+                      )}
+                    >
+                      Re-generate with original intent
+                    </Button>
+                  </div>
+                )}
 
                 <Tabs defaultValue="preview" className="w-full">
                   <TabsList className="grid w-full grid-cols-6">
