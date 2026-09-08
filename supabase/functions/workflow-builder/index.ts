@@ -571,7 +571,7 @@ serve(async (req) => {
       );
     }
 
-    const { messages, system_mode } = body as { messages: unknown; system_mode?: unknown };
+    const { messages, system_mode, root_intent } = body as { messages: unknown; system_mode?: unknown; root_intent?: unknown };
     const validation = validateMessages(messages);
     if (!validation.valid) {
       return new Response(
@@ -603,6 +603,7 @@ serve(async (req) => {
         model: aiModel,
         messages: [
           { role: 'system', content: buildSystemPrompt(mode) },
+          ...buildIntentLockMessages(root_intent),
           ...messages as Array<{ role: string; content: string }>,
         ],
         stream: true,
