@@ -13,6 +13,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { WorkflowPreviewDiagram } from '@/components/workflow/WorkflowPreviewDiagram';
 import { getSupabaseUrl } from '@/lib/env';
 import { autoCompleteWorkflow } from '@/lib/workflows/autoComplete';
+import { checkIntentAlignment, type IntentAlignmentResult } from '@/lib/workflows/intentAlignment';
 import { decompose, inferMode, recallMemory, startTrace, updateTrace, runOrchestration, completeTrace, writeMemory } from '@/lib/cognitive/orchestrator';
 import { loadOrCreateDNA } from '@/lib/cognitive/dna';
 import { ArchitectureNegotiation } from '@/components/cognitive/ArchitectureNegotiation';
@@ -285,6 +286,8 @@ export const WorkflowBuilder: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [generatedWorkflow, setGeneratedWorkflow] = useState<WorkflowResult | null>(null);
+  const [rootIntent, setRootIntent] = useState<string | null>(null);
+  const [intentAlignment, setIntentAlignment] = useState<IntentAlignmentResult | null>(null);
   const [systemMode, setSystemMode] = useState<SystemMode>('auto');
   const [cognitiveEnabled, setCognitiveEnabled] = useState(settings.cognitiveEngineEnabled);
   // Sync local toggle when global settings change
