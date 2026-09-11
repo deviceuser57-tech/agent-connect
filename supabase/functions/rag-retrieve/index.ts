@@ -570,17 +570,23 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Create client with user's auth token to verify authentication
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    // Allow trusted internal calls (service role) from other edge functions
+    const bearer = authHeader.slice('Bearer '.length).trim();
+    const isInternalCall = bearer === supabaseServiceKey;
 
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!isInternalCall) {
+      // Create client with user's auth token to verify authentication
+      const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+
+      const { data: { user }, error: authError } = await authClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const {
